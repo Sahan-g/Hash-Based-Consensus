@@ -51,3 +51,4 @@ module.exports = Block;
 // TODO: Create block considering only transactions happened upto 8 mins
 // TODO: Add logic to verify block
 // TODO: In validating block, must check timestamp, and verify and validate transactions
+// TODO: Replace with proper hashing function from ChainUtil
