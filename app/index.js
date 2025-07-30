@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const Block = require('../blockchain/block');
 const Blockchain = require('../blockchain/index');
+const BidManager = require('../bid/bid-manager');
 
 const PORT = process.env.PORT || 3001;
 
@@ -10,7 +11,8 @@ const app = express();
 const startServer = () => {
     app.use(bodyParser.json());
 
-    const blockchain = new Blockchain();
+    // const blockchain = new Blockchain();
+    // const bidManager = new BidManager("pubKey");
 
     // app.post('/createBlock', (req, res) => {
     //     const { index, timestamp, transactions, previousHash, proposerPublicKey } = req.body;
@@ -35,6 +37,46 @@ const startServer = () => {
 
     // app.get('/chain', (_req, res) => {
     //     res.status(200).json(blockchain.chain);
+    // })
+
+    // app.post('/generateBid', (req, res) => {
+    //     const { round } = req.body;
+    //     try {
+    //         const bidPacket = bidManager.generateBid(round);
+    //         res.status(201).json(bidPacket);
+    //     } catch (error) {
+    //         res.status(400).json({ error: 'Invalid bid data' });
+    //     }
+    // })
+
+    // app.post('/receiveBid', (req, res) => {
+    //     const bidPacket = req.body;
+    //     if (bidManager.receiveBid(bidPacket)) {
+    //         res.status(200).json({ message: 'Bid received, verified and added successfully' });
+    //     } else {
+    //         res.status(400).json({ error: 'Invalid bid packet' });
+    //     }
+    // })
+
+    // app.get('/getBids/:round', (req, res) => {
+    //     const { round } = req.params;
+    //     const bidList = bidManager.getAllBids(parseInt(round, 10));
+    //     if (bidList.length > 0) {
+    //         res.status(200).json(bidList);
+    //     }
+    //     else {
+    //         res.status(404).json({ message: 'No bids found for this round' });
+    //     }
+    // })
+
+    // app.get('/selectProposer', (req, res) => {
+    //     const { round, blockHash } = req.body;
+    //     const publicKey = bidManager.selectProposer(round, blockHash);
+    //     if (publicKey) {
+    //         res.status(200).json({ proposerPublicKey: publicKey });
+    //     } else {
+    //         res.status(404).json({ message: 'No proposer found for this round' });
+    //     }
     // })
     
     app.listen(PORT, () => {
