@@ -1,5 +1,5 @@
-const crypto = require('crypto');   
 const BidPacket = require('./bid-packet');
+const ChainUtil = require('../chain-util');
 const { log } = require('console');
 
 class BidManager {
@@ -8,23 +8,17 @@ class BidManager {
         this.bidList = new Map();
     }
 
-    generateBid(round) {
-        const bidHash = this.hashBid(Math.floor(Math.random() * 100000));
-        const bidPacket = new BidPacket({publicKey: this.selfPublicKey, round, bidHash});
+    generateBid(round, wallet) {
+        const bidHash = ChainUtil.createHash(String(Math.floor(Math.random() * 100000)));
+        const bidPacket = new BidPacket({publicKey: this.selfPublicKey, round, bidHash, wallet});
         this.addToBidList(bidPacket);
-        console.log("Bid List: ", this.bidList);
         return bidPacket;
-    }
-
-    hashBid(bid) {
-        return crypto.createHash('sha256').update(String(bid)).digest('hex');h;
     }
 
     receiveBid(bidPacket) {
         if(!BidPacket.verifyBid(bidPacket)) return false;
 
         this.addToBidList(bidPacket);
-        console.log("Bid List after adding:", this.bidList);
 
         return true;
     }
@@ -80,5 +74,3 @@ class BidManager {
 }
 
 module.exports = BidManager;
-
-// TODO: Add hashing function to ChainUtil

@@ -20,7 +20,8 @@ class Transaction {
       timestamp: Date.now(),
       amount: senderWallet.balance,
       address: senderWallet.publicKey,
-      signature: senderWallet.sign(ChainUtil.hash(transaction.outputs)),
+      // signature: senderWallet.sign(ChainUtil.hash(transaction.outputs)),
+      signature: senderWallet.sign(ChainUtil.createHash(JSON.stringify(transaction.outputs))),
     };
     return transaction;
   }
@@ -74,7 +75,8 @@ class Transaction {
     return ChainUtil.verifySignature(
       transaction.input.address,
       transaction.input.signature,
-      ChainUtil.hash(transaction.outputs)
+      // ChainUtil.hash(transaction.outputs)
+      ChainUtil.createHash(JSON.stringify(transaction.outputs))
     );
   }
 }

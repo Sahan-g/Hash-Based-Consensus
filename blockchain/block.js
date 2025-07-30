@@ -1,47 +1,51 @@
-const crypto = require('crypto');
+const ChainUtil = require('../chain-util');
 
 class Block {
-    constructor({index, timestamp, transactions, previousHash, proposerPublicKey, hash}) {
+    constructor({index, timestamp, transactions, previousHash, proposerPublicKey, hash, signature, wallet}) {
         this.index = index; 
         this.timestamp = timestamp;
         this.transactions = transactions; 
         this.previousHash = previousHash; 
         this.proposerPublicKey = proposerPublicKey; 
-        this.hash = hash || this.computeHash();
+        this.hash = hash ? hash : this.computeHash();
+        this.signature = signature ? signature : wallet.sign(this.hash);
     }
 
     computeHash() {
         const blockString = this.index + this.timestamp + JSON.stringify(this.transactions) + this.previousHash + this.proposerPublicKey;
-        return crypto.createHash('sha256').update(blockString).digest('hex');
+        return ChainUtil.createHash(blockString);
     }
 
-    static genesis() {
+    static genesis(wallet) {
         return new Block({
             index: 0,
             timestamp: Date.now(),
             transactions: [],
             previousHash: '0',
             proposerPublicKey: 'GENESIS',
-            hash: '0000ed9e07bf3d957688ed7ac3b93aa78c24afaad55056818faab9f03be9aaec'
+            hash: '0000ed9e07bf3d957688ed7ac3b93aa78c24afaad55056818faab9f03be9aaec',
+            wallet: wallet
         });
     }
 
     static verifyBlock(block) {
+        if (block.hash !== block.computeHash()) {
+            return false;
+        }
+        if (!ChainUtil.verifySignature(block.proposerPublicKey, block.signature, block.hash)) {
+            return false;
+        }
         return true;
     }
 
     static isValidBlock(block, previousBlock) {
-        console.log(block);
         if (block.index !== previousBlock.index + 1) {
             return false;
         }
         if (block.previousHash !== previousBlock.hash) {
             return false;
         }
-        if (block.hash !== block.computeHash()) {
-            console.log(block.computeHash());
-            return false;
-        }
+
         return true;
     }
 }
@@ -49,6 +53,4 @@ class Block {
 module.exports = Block;
 
 // TODO: Create block considering only transactions happened upto 8 mins
-// TODO: Add logic to verify block
-// TODO: In validating block, must check timestamp, and verify and validate transactions
-// TODO: Replace with proper hashing function from ChainUtil
+// TODO: In validating block, must check timestamp

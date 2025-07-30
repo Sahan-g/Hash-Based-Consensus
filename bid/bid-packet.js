@@ -1,28 +1,24 @@
 const crypto = require('crypto');
+const ChainUtil = require('../chain-util');
 
 class BidPacket {
-  constructor({publicKey, round, bidHash, timestamp = Date.now()}) {
+  constructor({publicKey, round, bidHash, timestamp = Date.now(), wallet}) {
     this.publicKey = publicKey;
     this.round = round;
     this.bidHash = bidHash;
     this.timestamp = timestamp;
-    this.signature = this.signBid();
-  }
 
-  signBid() {
     const data = `${this.publicKey}-${this.round}-${this.bidHash}-${this.timestamp}`;
-    return crypto.createHash('sha256').update(data).digest('hex');
+    const dataHash = ChainUtil.createHash(data);
+    this.signature = wallet.sign(dataHash);
   }
 
-  static verifyBid(bidPacket){
+  static verifyBid(bidPacket) {
     const {publicKey, round, bidHash, timestamp, signature} = bidPacket;
-    const expectedSignature = crypto.createHash('sha256').update(`${publicKey}-${round}-${bidHash}-${timestamp}`).digest('hex');
-    return expectedSignature === signature;
+    const signedString = `${publicKey}-${round}-${bidHash}-${timestamp}`;
+    return ChainUtil.verifySignature(publicKey, signature, ChainUtil.createHash(signedString));
   }
 
 }
 
 module.exports = BidPacket;
-
-// TODO: Sign bid using private key
-// TODO: Verify bid using public key
