@@ -1,8 +1,8 @@
 const Block = require('./block');
 
 class Blockchain {
-    constructor() {
-        this.chain = [Block.genesis()]; 
+    constructor(wallet) {
+        this.chain = [Block.genesis(wallet)]; 
     }
 
     getLastBlock() {
