@@ -1,9 +1,9 @@
 const INITIAL_BALANCE = 500;
-const MINING_REWARD = 50;
+const PROPOSER_REWARD = 50;
 const DIFFICULTY = 4;
 
 module.exports = {
   INITIAL_BALANCE,
-  MINING_REWARD,
+  PROPOSER_REWARD,
   DIFFICULTY,
 };

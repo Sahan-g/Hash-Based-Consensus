@@ -6,7 +6,7 @@ const Blockchain = require("../blockchain/index");
 const Wallet = require("../wallet");
 const TransactionPool = require("../transaction/transaction-pool");
 const { DIFFICULTY } = require("../config");
-const BidManager = require('../bid/bid-manager');
+const BidManager = require("../bid/bid-manager");
 
 const PORT = process.env.PORT || 3001;
 
@@ -47,16 +47,16 @@ const startServer = async () => {
   //     res.status(200).json(blockchain.chain);
   // })
 
-//   app.get("/transactions", (req, res) => {
-//     res.json(tp.transactions);
-//   });
+  // app.get("/transactions", (req, res) => {
+  //   res.json(tp.transactions);
+  // });
 
-//   app.post("/transact", (req, res) => {
-//     const { recipient, amount } = req.body;
+  // app.post("/transact", (req, res) => {
+  //   const { recipient, amount } = req.body;
 
-    // if (!recipient || !amount) {
-    //   return res.status(400).send("Recipient and amount are required.");
-    // }
+  //   if (!recipient || !amount) {
+  //     return res.status(400).send("Recipient and amount are required.");
+  //   }
 
   //   const transaction = wallet.createTransaction(
   //     recipient,
@@ -75,49 +75,98 @@ const startServer = async () => {
   //   res.json({ publicKey: wallet.publicKey });
   // });
 
-    // app.post('/generateBid', (req, res) => {
-    //     const { round } = req.body;
-    //     try {
-    //         const bidPacket = bidManager.generateBid(round, wallet);
-    //         res.status(201).json(bidPacket);
-    //     } catch (error) {
-    //         res.status(400).json({ error: 'Invalid bid data' });
-    //     }
-    // })
+  // app.post('/generateBid', (req, res) => {
+  //     const { round } = req.body;
+  //     try {
+  //         const bidPacket = bidManager.generateBid(round, wallet);
+  //         res.status(201).json(bidPacket);
+  //     } catch (error) {
+  //         res.status(400).json({ error: 'Invalid bid data' });
+  //     }
+  // })
 
-    // app.post('/receiveBid', (req, res) => {
-    //     const bidPacket = req.body;
-    //     if (bidManager.receiveBid(bidPacket)) {
-    //         res.status(200).json({ message: 'Bid received, verified and added successfully' });
-    //     } else {
-    //         res.status(400).json({ error: 'Invalid bid packet' });
-    //     }
-    // })
+  // app.post('/receiveBid', (req, res) => {
+  //     const bidPacket = req.body;
+  //     if (bidManager.receiveBid(bidPacket)) {
+  //         res.status(200).json({ message: 'Bid received, verified and added successfully' });
+  //     } else {
+  //         res.status(400).json({ error: 'Invalid bid packet' });
+  //     }
+  // })
 
-    // app.get('/getBids/:round', (req, res) => {
-    //     const { round } = req.params;
-    //     const bidList = bidManager.getAllBids(parseInt(round, 10));
-    //     if (bidList.length > 0) {
-    //         res.status(200).json(bidList);
-    //     }
-    //     else {
-    //         res.status(404).json({ message: 'No bids found for this round' });
-    //     }
-    // })
+  // app.get('/getBids/:round', (req, res) => {
+  //     const { round } = req.params;
+  //     const bidList = bidManager.getAllBids(parseInt(round, 10));
+  //     if (bidList.length > 0) {
+  //         res.status(200).json(bidList);
+  //     }
+  //     else {
+  //         res.status(404).json({ message: 'No bids found for this round' });
+  //     }
+  // })
 
-    // app.get('/selectProposer', (req, res) => {
-    //     const { round, blockHash } = req.body;
-    //     const publicKey = bidManager.selectProposer(round, blockHash);
-    //     if (publicKey) {
-    //         res.status(200).json({ proposerPublicKey: publicKey });
-    //     } else {
-    //         res.status(404).json({ message: 'No proposer found for this round' });
-    //     }
-    // })
+  // app.get('/selectProposer', (req, res) => {
+  //     const { round, blockHash } = req.body;
+  //     const publicKey = bidManager.selectProposer(round, blockHash);
+  //     if (publicKey) {
+  //         res.status(200).json({ proposerPublicKey: publicKey });
+  //     } else {
+  //         res.status(404).json({ message: 'No proposer found for this round' });
+  //     }
+  // })
 
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-  });
+  // createBlockFromTransactions = () => {
+  //   const transactions = tp.validTransactions();
+  //   console.log("valid Transactions : ", transactions);
+
+  //   if (transactions.length == 0) {
+  //     console.log("No valid transactions to include in block!");
+  //     return;
+  //   }
+
+  //   const lastBlock = blockchain.getLastBlock();
+  //   const newBlock = new Block({
+  //     index: lastBlock.index + 1,
+  //     timestamp: Date.now(),
+  //     transactions: transactions,
+  //     previousHash: lastBlock.hash,
+  //     proposerPublicKey: wallet.publicKey,
+  //     wallet: wallet,
+  //   });
+
+  //   try {
+  //     blockchain.addBlock(newBlock);
+  //     console.log("new blockchain : ", blockchain);
+  //     tp.removeConfirmedTransactions(transactions);
+  //     console.log(
+  //       `Block #${newBlock.index} created with ${transactions.length} transactions.`
+  //     );
+  //   } catch (error) {
+  //     console.error("Failed to add block:", error.message);
+  //   }
+  // };
+
+  // const scheduleNextBlock = () => {
+  //   const now = Date.now();
+
+  //   // const INTERVAL = 8 * 60 * 1000;
+  //   const INTERVAL = 1 * 60 * 1000;
+
+  //   const timeToNextRound = INTERVAL - (now % INTERVAL);
+  //   console.log(`Next block creation scheduled in ${timeToNextRound / 1000}s`);
+
+  //   setTimeout(() => {
+  //     console.log("create a new block from transaction pool");
+  //     createBlockFromTransactions();
+  //     scheduleNextBlock();
+  //   }, timeToNextRound);
+  // };
+
+  // scheduleNextBlock();
 };
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
 
 startServer();
