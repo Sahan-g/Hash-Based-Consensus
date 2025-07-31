@@ -12,10 +12,13 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "axios": "^1.11.0",
     "body-parser": "^2.2.0",
+    "classic-level": "^3.0.0",
     "crypto-js": "^4.2.0",
     "elliptic": "^6.6.1",
     "express": "^5.1.0",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "ws": "^8.18.3"
   }
 }
