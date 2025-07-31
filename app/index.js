@@ -12,40 +12,40 @@ const PORT = process.env.PORT || 3001;
 
 const app = express();
 
-const startServer = () => {
+const startServer = async () => {
   app.use(bodyParser.json());
 
   const wallet = new Wallet();
-  const blockchain = new Blockchain(wallet);
+  const blockchain = await Blockchain.create(wallet);
   const tp = new TransactionPool();
   const bidManager = new BidManager(wallet.publicKey);
 
-//   app.post('/createBlock', (req, res) => {
-//       const { index, timestamp, transactions, previousHash, proposerPublicKey } = req.body;
-//       try {
-//           console.log('Creating a new block');
-//           const newBlock = new Block({ index, timestamp, transactions, previousHash, proposerPublicKey, wallet });
-//           res.status(201).json(newBlock);
-//       } catch (error) {
-//           res.status(400).json({ error: 'Invalid block data' });
-//       }
-//   });
+  // app.post('/createBlock', (req, res) => {
+  //     const { index, timestamp, transactions, previousHash, proposerPublicKey } = req.body;
+  //     try {
+  //         console.log('Creating a new block');
+  //         const newBlock = new Block({ index, timestamp, transactions, previousHash, proposerPublicKey, wallet });
+  //         res.status(201).json(newBlock);
+  //     } catch (error) {
+  //         res.status(400).json({ error: 'Invalid block data' });
+  //     }
+  // });
 
-//   app.post('/addBlock', (req, res) => {
-//       const block = req.body;
+  // app.post('/addBlock', (req, res) => {
+  //     const block = req.body;
 
-//       try {
-//         const newBlock = new Block({...block, wallet});
-//           blockchain.addBlock(newBlock);
-//           res.status(200).json({ message: 'Block added successfully', block });
-//       } catch (error) {
-//           res.status(400).json({ error: error.message });
-//       }
-//   })
+  //     try {
+  //       const newBlock = new Block({...block, wallet});
+  //         blockchain.addBlock(newBlock);
+  //         res.status(200).json({ message: 'Block added successfully', block });
+  //     } catch (error) {
+  //         res.status(400).json({ error: error.message });
+  //     }
+  // })
 
-//   app.get('/chain', (_req, res) => {
-//       res.status(200).json(blockchain.chain);
-//   })
+  // app.get('/chain', (_req, res) => {
+  //     res.status(200).json(blockchain.chain);
+  // })
 
 //   app.get("/transactions", (req, res) => {
 //     res.json(tp.transactions);
