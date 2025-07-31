@@ -21,13 +21,6 @@ class Wallet {
   }
 
   createTransaction(recipient, amount, transactionPool, blockchain) {
-    // console.log(
-    //   "checking error: ",
-    //   recipient,
-    //   amount,
-    //   transactionPool,
-    //   blockchain
-    // );
     this.balance = this.calculateBalance(blockchain);
     if (amount > this.balance) {
       console.error(`Amount: ${amount} exceeds balance`);
