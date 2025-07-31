@@ -35,22 +35,35 @@ class Block {
         if (!ChainUtil.verifySignature(block.proposerPublicKey, block.signature, block.hash)) {
             return false;
         }
+        console.log("Block verified successfully");
         return true;
     }
 
     static isValidBlock(block, previousBlock) {
         if (block.index !== previousBlock.index + 1) {
+            console.log("Invalid block index");
             return false;
         }
         if (block.previousHash !== previousBlock.hash) {
+            console.log("Invalid previous hash");
+            return false;
+        }
+        if (block.timestamp <= previousBlock.timestamp) {
+            console.log("Invalid timestamp");
             return false;
         }
 
+        console.log("Block is valid");
         return true;
+    }
+
+    static fromObject(obj) {
+        const { index, timestamp, transactions, previousHash, proposerPublicKey, hash, signature } = obj;
+        return new this({index, timestamp, transactions, previousHash, proposerPublicKey, hash, signature});
     }
 }
 
 module.exports = Block;
 
 // TODO: Create block considering only transactions happened upto 8 mins
-// TODO: In validating block, must check timestamp
+// TODO: In validating block, must check timestamp, whether it happened at or before 8 mins
