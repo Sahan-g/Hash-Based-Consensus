@@ -1,13 +1,32 @@
 const { INITIAL_BALANCE } = require("../config");
 const Transaction = require("../transaction/transaction");
 const ChainUtil = require("../chain-util");
+const db = require("../database");
 
 class Wallet {
   constructor() {
     this.balance = INITIAL_BALANCE;
-    this.keyPair = ChainUtil.genKeyPair();
-    this.publicKey = this.keyPair.getPublic().encode("hex");
-    console.log("Wallet created with public key: ", this.publicKey);
+    this.keyPair = null;
+    this.publicKey = null;
+  }
+
+  static async loadOrCreate() {
+    const wallet = new Wallet();
+    let privateKey = await db.getWalletKey();
+
+    if (privateKey) {
+      wallet.keyPair = ChainUtil.ec.keyFromPrivate(privateKey, "hex");
+      console.log("Wallet loaded from saved key.");
+    } else {
+      wallet.keyPair = ChainUtil.genKeyPair();
+      privateKey = wallet.keyPair.getPrivate("hex");
+
+      await db.saveWalletKey(privateKey);
+      console.log("New wallet created and key saved.");
+    }
+
+    wallet.publicKey = wallet.keyPair.getPublic().encode("hex");
+    return wallet;
   }
 
   toString() {
@@ -74,8 +93,12 @@ class Wallet {
   }
 
   static blockchainWallet() {
-    const wallet = new Wallet();
-    return wallet;
+    const blockchainWallet = new this();
+    blockchainWallet.keyPair = ChainUtil.genKeyPair();
+    blockchainWallet.publicKey = blockchainWallet.keyPair
+      .getPublic()
+      .encode("hex");
+    return blockchainWallet;
   }
 }
 
