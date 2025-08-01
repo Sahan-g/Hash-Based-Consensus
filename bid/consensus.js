@@ -295,37 +295,126 @@ function findClosestBidPublicKey(hashTable, targetBidHash) {
   const sortedBids = sortBidsOptimized(bidArray);
   return findClosestBidBinarySearch(sortedBids, targetBidHash);
 }
+//-------------------------------------------------------------------------------------
 
-// test
-console.log("=== Testing Transformation ===");
-const transformedData = testTransformation();
+function performanceTest(hashTable, testName) {
+  console.log(`\n=== ${testName} Performance Test ===`);
+  console.log(`Testing with ${Object.keys(hashTable).length} entries`);
 
-console.log("\n=== Testing Optimized Functions ===");
-const optimizedBidArray = createOptimizedBidArray(bidHashTable);
-console.log(
-  "Optimized bid array (publicKey + bidValue only):",
-  optimizedBidArray
+  // Test 1: Create optimized array
+  const start1 = performance.now();
+  const bidArray = createOptimizedBidArray(hashTable);
+  const end1 = performance.now();
+  console.log(`Array creation: ${(end1 - start1).toFixed(3)}ms`);
+
+  // Test 2: Sort the array
+  const start2 = performance.now();
+  const sortedBids = sortBidsOptimized(bidArray);
+  const end2 = performance.now();
+  console.log(`Sorting: ${(end2 - start2).toFixed(3)}ms`);
+
+  // Test 3: Find closest bid (multiple searches for average)
+  const targetHashes = [
+    "8a2d64b7f9c1e3a5b8d7f2c4e6a9b3d5f8c1e4a7b0d3f6c9e2a5d8f1c4e7a0b3d6",
+    "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234",
+    "fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321fedc",
+    "5555555555555555555555555555555555555555555555555555555555555555",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  ];
+
+  const start3 = performance.now();
+  let results = [];
+  for (const target of targetHashes) {
+    const result = findClosestBidBinarySearch(sortedBids, target);
+    results.push(result);
+  }
+  const end3 = performance.now();
+  console.log(`5 closest bid searches: ${(end3 - start3).toFixed(3)}ms`);
+  console.log(`Average per search: ${((end3 - start3) / 5).toFixed(3)}ms`);
+
+  // Total time
+  const totalTime = end1 - start1 + (end2 - start2) + (end3 - start3);
+  console.log(`Total processing time: ${totalTime.toFixed(3)}ms`);
+
+  return {
+    arrayCreation: end1 - start1,
+    sorting: end2 - start2,
+    searching: (end3 - start3) / 5,
+    total: totalTime,
+    entryCount: Object.keys(hashTable).length,
+  };
+}
+
+// Generate 1000-entry sample data
+function generateLargeBidHashTable(count = 1000) {
+  const largeBidHashTable = {};
+
+  function randomHex(length) {
+    let result = "";
+    const chars = "abcdef0123456789";
+    for (let i = 0; i < length; i++) {
+      result += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return result;
+  }
+
+  function randomSignature() {
+    return "3045" + randomHex(60) + "0220" + randomHex(60);
+  }
+
+  for (let i = 0; i < count; i++) {
+    const publicKey = "04" + randomHex(126); // 128 hex chars total
+    largeBidHashTable[publicKey] = {
+      round: 1,
+      bidHash: randomHex(64),
+      timestamp: 1722470400000 + i * 1000,
+      signature: randomSignature(),
+    };
+  }
+
+  return largeBidHashTable;
+}
+
+// Performance tests
+console.log("=== Performance Testing ===");
+
+// Test with small dataset (8 entries)
+const smallResults = performanceTest(bidHashTable, "Small Dataset (8 entries)");
+
+// Test with large dataset (1000 entries)
+const largeBidHashTable = generateLargeBidHashTable(1000);
+const largeResults = performanceTest(
+  largeBidHashTable,
+  "Large Dataset (1000 entries)"
 );
 
-const optimizedSortedBids = sortBidsOptimized(optimizedBidArray);
-console.log("Optimized sorted bids:", optimizedSortedBids);
+// Performance analysis
+console.log("\n=== Performance Analysis ===");
+console.log(`Small dataset (${smallResults.entryCount} entries):`);
+console.log(`  - Array creation: ${smallResults.arrayCreation.toFixed(3)}ms`);
+console.log(`  - Sorting: ${smallResults.sorting.toFixed(3)}ms`);
+console.log(`  - Binary search: ${smallResults.searching.toFixed(3)}ms`);
+console.log(`  - Total: ${smallResults.total.toFixed(3)}ms`);
 
-// Example target bid hash
-const targetBidHash =
-  "8a2d64b7f9c1e3a5b8d7f2c4e6a9b3d5f8c1e4a7b0d3f6c9e2a5d8f1c4e7a0b3d6";
-const closestPublicKey = findClosestBidPublicKey(bidHashTable, targetBidHash);
-console.log(
-  `Closest bid public key to target ${targetBidHash}:`,
-  closestPublicKey
-);
+console.log(`\nLarge dataset (${largeResults.entryCount} entries):`);
+console.log(`  - Array creation: ${largeResults.arrayCreation.toFixed(3)}ms`);
+console.log(`  - Sorting: ${largeResults.sorting.toFixed(3)}ms`);
+console.log(`  - Binary search: ${largeResults.searching.toFixed(3)}ms`);
+console.log(`  - Total: ${largeResults.total.toFixed(3)}ms`);
+
+// // Example target bid hash
+// const targetBidHash = "8a2d64b7f9c1e3a5b8d7f2c4e6a9b3d5f8c1e4a7b0d3f6c9e2a5d8f1c4e7a0b3d6";
+// const closestPublicKey = findClosestBidPublicKey(bidHashTable, targetBidHash);
+// console.log(`\nExample: Closest bid public key to target ${targetBidHash}:`);
+// console.log(closestPublicKey);
 
 module.exports = {
   bidHashTable,
   transformBidManagerToHashTable,
-  createSampleBidManagerData,
-  testTransformation,
   createOptimizedBidArray,
   sortBidsOptimized,
   findClosestBidBinarySearch,
   findClosestBidPublicKey,
+  performanceTest,
+  generateLargeBidHashTable,
 };
