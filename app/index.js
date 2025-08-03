@@ -15,7 +15,7 @@ const app = express();
 const startServer = async () => {
   app.use(bodyParser.json());
 
-  const wallet = new Wallet();
+  const wallet = await Wallet.loadOrCreate();
   const blockchain = await Blockchain.create(wallet);
   const tp = new TransactionPool();
   const bidManager = new BidManager(wallet.publicKey);
