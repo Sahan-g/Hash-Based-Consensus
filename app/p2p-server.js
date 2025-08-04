@@ -11,14 +11,17 @@ const MESSAGE_TYPES = {
     chain: 'CHAIN',
     transaction: 'TRANSACTION',
     clear_transactions: 'CLEAR_TRANSACTIONS',
-    block: 'BLOCK'
+    block: 'BLOCK',
+    round: 'ROUND',
+    bid: 'BID',
 };
 
 class P2PServer {
-    constructor(blockchain, transactionPool) {
+    constructor(blockchain, transactionPool,bidManager) {
         this.blockchain = blockchain;
         this.transactionPool = transactionPool;
         this.sockets = [];
+        this.bidManager = bidManager;
     }
 
     async listen() {
@@ -96,6 +99,7 @@ class P2PServer {
         console.log('New peer connected');
         this.messageHandler(socket);
         this.sendChain(socket)
+        this.sendRound(socket, this.bidManager.round); 
     }
 
     messageHandler(socket) {
@@ -118,8 +122,17 @@ class P2PServer {
                     }
                     console.log(peers)
                     break;
+                case MESSAGE_TYPES.round:
+                    console.log(`Received round message: ${data.round}`);// handle received round
+                    this.bidManager.round = data.round; 
+                    break;
+                case MESSAGE_TYPES.bid:
+                    // handle received bid
+                    this.bidManager.receiveBid(data.bid);
+                    break;
                 default:
                     console.error(`Unknown message type: ${data.type}`);
+
             }
 
         });
@@ -154,11 +167,28 @@ class P2PServer {
     }
 
     broadcastBlock(block) {
+
+       const transactions =  this.transactionPool.getTransactionsForRound(this.transactionPool);
+       const bidList= this.bidManager.getAllBids(this.bidManager.round);
+       const publicKeyOfProposer = 
+
         this.sockets.forEach(socket => {
             socket.send(JSON.stringify({ type: MESSAGE_TYPES.block, block }));
         });
         // console.log(`BROADCASTED: ${block.toString()}`);
     }
+
+    sendRound(socket, round) {
+        socket.send(JSON.stringify({ type: MESSAGE_TYPES.round, round }));
+    }
+
+    broadcastBid(bidPacket) {
+        this.sockets.forEach(socket => {
+            socket.send(JSON.stringify({ type: MESSAGE_TYPES.bid, bid: bidPacket }));
+        });
+    }
+    
+
 }
 
 module.exports = P2PServer;
