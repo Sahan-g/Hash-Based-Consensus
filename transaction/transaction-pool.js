@@ -58,6 +58,22 @@ class TransactionPool {
       (t) => !confirmedTransactions.find((ct) => ct.id === t.id)
     );
   }
+
+   getTransactionsForRound(transactionPool) {
+    const allTxns = transactionPool.transactions;
+
+    const roundStart = Block.genesis().timestamp + this.round * ROUND_INTERVAL;
+    const roundEndLimit = roundStart + 8 * 60 * 1000; // 8-minute mark
+
+    // Filter and sort
+    const filteredTxns = allTxns
+      .filter(
+        (txn) => txn.timestamp >= roundStart && txn.timestamp < roundEndLimit
+      )
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    return filteredTxns;
+  }
 }
 
 module.exports = TransactionPool;
