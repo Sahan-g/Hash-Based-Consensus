@@ -3,6 +3,8 @@ const axios = require('axios');
 
 const P2P_PORT = process.env.P2P_PORT || 5001;
 const selfAddress = `ws://localhost:${P2P_PORT}`;
+const{ findClosestBidPublicKey, transformBidManagerToHashTable } = require("../bid/consensus.js")
+const {Block} = require("../blockchain/block.js")
 
 // const peers = process.env.PEERS ? process.env.PEERS.split(',') : [];
 let peers = [];
@@ -17,15 +19,16 @@ const MESSAGE_TYPES = {
 };
 
 class P2PServer {
-    constructor(blockchain, transactionPool,bidManager) {
+    constructor(blockchain, transactionPool,bidManager, wallet) {
         this.blockchain = blockchain;
         this.transactionPool = transactionPool;
         this.sockets = [];
         this.bidManager = bidManager;
+        this.wallet= wallet;
     }
 
     async listen() {
-        const server = new webSocket.Server({ port: P2P_PORT });``
+        const server = new webSocket.Server({ port: P2P_PORT });
         server.on('connection', socket => this.connectSocket(socket));
         // this.connectToPeers();
        await this.registerToBootstrap();
@@ -166,15 +169,19 @@ class P2PServer {
         });
     }
 
-    broadcastBlock(block) {
+    broadcastBlock(round) {
 
        const transactions =  this.transactionPool.getTransactionsForRound(this.transactionPool);
-       const bidList= this.bidManager.getAllBids(this.bidManager.round);
-       const publicKeyOfProposer = 
+       const bidList= this.bidManager.bidList;
+       const block = new Block({index: this.blockchain.chain.length+1, transactions, previousHash: this.blockchain.getLatestBlock().hash, proposerPublicKey: this.bidManager.selfPublicKey, wallet: this.wallet});
+       const hashTableWithBids=  transformBidManagerToHashTable(bidList,round );
+       proposerPublicKey = findClosestBidPublicKey(hashTableWithBids, block.hash);
 
-        this.sockets.forEach(socket => {
-            socket.send(JSON.stringify({ type: MESSAGE_TYPES.block, block }));
-        });
+       if(proposerPublicKey !== this.bidManager.selfPublicKey){
+           this.sockets.forEach(socket => {
+               socket.send(JSON.stringify({ type: MESSAGE_TYPES.block, block }));
+           });
+       }
         // console.log(`BROADCASTED: ${block.toString()}`);
     }
 

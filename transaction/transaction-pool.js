@@ -68,7 +68,7 @@ class TransactionPool {
     // Filter and sort
     const filteredTxns = allTxns
       .filter(
-        (txn) => txn.timestamp >= roundStart && txn.timestamp < roundEndLimit
+        (txn) =>  txn.timestamp < roundEndLimit // lower limit removed because since we consider txns only upto  8 minutes some will be left for the next round
       )
       .sort((a, b) => a.timestamp - b.timestamp);
 
