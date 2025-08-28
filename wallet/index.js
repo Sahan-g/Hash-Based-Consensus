@@ -5,7 +5,6 @@ const db = require("../database");
 
 class Wallet {
   constructor() {
-    this.balance = INITIAL_BALANCE;
     this.keyPair = null;
     this.publicKey = null;
   }
@@ -54,42 +53,6 @@ class Wallet {
       transactionPool.updateOrAddTransaction(transaction);
     }
     return transaction;
-  }
-
-  calculateBalance(blockchain) {
-    console.log(`Calculating balance for wallet: ${this.publicKey}`);
-    console.log("The blockchain is : ", blockchain);
-    let balance = this.balance;
-    let transactions = [];
-    blockchain.chain.forEach((block) =>
-      block.transactions.forEach((transaction) => {
-        transactions.push(transaction);
-      })
-    );
-
-    const walletInputTs = transactions.filter(
-      (transaction) => transaction.input.address === this.publicKey
-    );
-    let startTime = 0;
-    if (walletInputTs.length > 0) {
-      const recentInputT = walletInputTs.reduce((prev, current) => {
-        return prev.timestamp > current.timestamp ? prev : current;
-      });
-      balance = recentInputT.outputs.find(
-        (output) => output.address === this.publicKey
-      ).amount;
-      startTime = recentInputT.input.timestamp;
-    }
-    transactions.forEach((transaction) => {
-      if (transaction.input.timestamp > startTime) {
-        transaction.outputs.find((output) => {
-          if (output.address === this.publicKey) {
-            balance += output.amount;
-          }
-        });
-      }
-    });
-    return balance;
   }
 
   static blockchainWallet() {

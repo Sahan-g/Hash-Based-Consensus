@@ -22,7 +22,7 @@ const startServer = async () => {
   const wallet = await Wallet.loadOrCreate();
   const blockchain = await Blockchain.create(wallet);
   const tp = new TransactionPool();
-  const bidManager = new BidManager(wallet.publicKey);
+  const bidManager = new BidManager(wallet.publicKey); 
   const p2pServer = new P2PServer(blockchain, tp,bidManager);
 
   app.listen(PORT, () => {

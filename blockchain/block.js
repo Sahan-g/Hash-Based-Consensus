@@ -12,9 +12,9 @@ class Block {
     }
 
     computeHash() {
-        const blockString = this.index + this.timestamp + JSON.stringify(this.transactions) + this.previousHash + this.proposerPublicKey;
+        const blockString = this.index + JSON.stringify(this.transactions) + this.previousHash + this.proposerPublicKey;
         return ChainUtil.createHash(blockString);
-    }
+    } // removed timestamp
 
     static genesis(wallet) {
         return new Block({

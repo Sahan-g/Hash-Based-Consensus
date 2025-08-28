@@ -26,6 +26,7 @@ class BidManager {
     const bidHash = ChainUtil.createHash(
       String(Math.floor(Math.random() * 100000))
     );
+    
     const bidPacket = new BidPacket({
       publicKey: this.selfPublicKey,
       round,
@@ -48,7 +49,7 @@ class BidManager {
     const roundBids = this.bidList.get(round);
     const closestBid = this.getClosestBid(blockHash, roundBids);
     return closestBid ? closestBid.publicKey : null;
-  }
+  } // 
 
   getAllBids(round) {
     return this.bidList.get

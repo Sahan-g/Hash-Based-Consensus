@@ -381,11 +381,11 @@ console.log("=== Performance Testing ===");
 // Test with small dataset (8 entries)
 const smallResults = performanceTest(bidHashTable, "Small Dataset (8 entries)");
 
-// Test with large dataset (1000 entries)
-const largeBidHashTable = generateLargeBidHashTable(1000);
+// Test with large dataset (25000 entries)
+const largeBidHashTable = generateLargeBidHashTable(25000);
 const largeResults = performanceTest(
   largeBidHashTable,
-  "Large Dataset (1000 entries)"
+  "Large Dataset (25000 entries)"
 );
 
 // Performance analysis
@@ -415,6 +415,4 @@ module.exports = {
   sortBidsOptimized,
   findClosestBidBinarySearch,
   findClosestBidPublicKey,
-  performanceTest,
-  generateLargeBidHashTable,
 };
