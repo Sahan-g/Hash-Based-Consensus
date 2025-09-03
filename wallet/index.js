@@ -38,7 +38,7 @@ class Wallet {
     return this.keyPair.sign(dataHash);
   }
 
-  createTransaction(recipient, amount, transactionPool, blockchain) {
+  createTransactionsold(recipient, amount, transactionPool, blockchain) {
     this.balance = this.calculateBalance(blockchain);
     if (amount > this.balance) {
       console.error(`Amount: ${amount} exceeds balance`);
@@ -53,6 +53,32 @@ class Wallet {
       transactionPool.updateOrAddTransaction(transaction);
     }
     return transaction;
+  }
+
+  createTransaction(
+    sensor_id,
+    reading,
+    transactionPool = null,
+    metadata = null
+  ) {
+    if (!sensor_id) {
+      throw new Error("sensor_id is required");
+    }
+    if (!reading || typeof reading !== "object") {
+      throw new Error("reading must be a non-null object");
+    }
+
+    const tx = Transaction.fromSensorReading(this, {
+      sensor_id,
+      reading,
+      metadata,
+    });
+
+    if (transactionPool) {
+      transactionPool.updateOrAddTransaction(tx);
+    }
+
+    return tx;
   }
 
   static blockchainWallet() {
