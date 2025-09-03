@@ -21,7 +21,6 @@ class BlockchainDB {
     async getChain() {
         try {
             const chain = await this.db.get("blockchain");
-            // console.log(`Blockchain retrieved successfully: ${JSON.stringify(chain)}.`);
             return chain;
 
         } catch (error) {
