@@ -1,4 +1,7 @@
 const Transaction = require("./transaction");
+const App = require("../app/index");
+
+const {TRANSACTION_COLLECTION_DURATION} = require("../config");
 
 class TransactionPool {
   constructor() {
@@ -61,9 +64,9 @@ class TransactionPool {
 
    getTransactionsForRound(transactionPool) {
     const allTxns = transactionPool.transactions;
-
-    const roundStart = Block.genesis().timestamp + this.round * ROUND_INTERVAL;
-    const roundEndLimit = roundStart + 8 * 60 * 1000; // 8-minute mark
+    
+    const roundStart = App.round_start;
+    const roundEndLimit = roundStart + TRANSACTION_COLLECTION_DURATION; // 8-minute mark
 
     // Filter and sort
     const filteredTxns = allTxns

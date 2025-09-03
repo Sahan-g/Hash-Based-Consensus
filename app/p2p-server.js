@@ -4,7 +4,8 @@ const axios = require('axios');
 const P2P_PORT = process.env.P2P_PORT || 5001;
 const selfAddress = `ws://localhost:${P2P_PORT}`;
 const{ findClosestBidPublicKey, transformBidManagerToHashTable } = require("../bid/consensus.js")
-const {Block} = require("../blockchain/block.js")
+const Block = require('../blockchain/block');
+const BidManager = require('../bid/bid-manager.js');
 
 // const peers = process.env.PEERS ? process.env.PEERS.split(',') : [];
 let peers = [];
@@ -29,7 +30,11 @@ class P2PServer {
 
     async listen() {
         const server = new webSocket.Server({ port: P2P_PORT });
-        server.on('connection', socket => this.connectSocket(socket));
+        server.on('connection', (socket) => { 
+            console.log(`🛜 Connected to new peer when CONNECTION event is fired: ${socket.url}`);
+            this.connectSocket(socket);
+        });
+
         // this.connectToPeers();
        await this.registerToBootstrap();
         console.log(`P2P Server listening on port ${P2P_PORT}`);
@@ -81,7 +86,7 @@ class P2PServer {
         const socket = new webSocket(peer);
 
         socket.on('open', () => {
-            console.log(`Connected to peer ${peer}`);
+            console.log(`🛜 Connected to peer when OPEN event is fired ${peer}`);
             this.connectSocket(socket);
         });
 
@@ -99,7 +104,7 @@ class P2PServer {
 
     connectSocket(socket) {
         this.sockets.push(socket);
-        console.log('New peer connected');
+        console.log(`New peer connected: ${socket.url}`);
         this.messageHandler(socket);
         this.sendChain(socket)
         this.sendRound(socket, this.bidManager.round); 
@@ -110,7 +115,9 @@ class P2PServer {
             const data = JSON.parse(message);
             switch (data.type) {
                 case MESSAGE_TYPES.chain:
-                    this.blockchain.replaceChain(data.chain);
+                    // console.log(`\nReceived data: ${JSON.stringify(data.chain)}`)
+                    console.log(`BidManager: ${this.bidManager}`);
+                    this.blockchain.replaceChain(data.chain, this.bidManager);
                     break;
                 case MESSAGE_TYPES.transaction:
                     this.transactionPool.updateOrAddTransaction(data.transaction);
@@ -119,18 +126,20 @@ class P2PServer {
                 //     this.transactionPool.clear();
                 //     break;
                 case MESSAGE_TYPES.block:
-                    const isAdded = this.blockchain.addToChain(data.block);
+                    console.log(`📥 Block received - ${JSON.stringify(data.block.hash)} at p2p-server from :${JSON.stringify(socket.url)}`);
+                    const isAdded = this.blockchain.addBlockToChain(data.block);
                     if (isAdded) {
                         this.transactionPool.removeConfirmedTransactions(data.block.data);
                     }
                     console.log(peers)
                     break;
                 case MESSAGE_TYPES.round:
-                    console.log(`Received round message: ${data.round}`);// handle received round
-                    this.bidManager.round = data.round; 
+                    console.log(`Received round message: ${JSON.stringify(data.round)}`);// handle received round
+                    this.bidManager.handleRound(data.round); 
                     break;
                 case MESSAGE_TYPES.bid:
                     // handle received bid
+                    console.log(`📥Bid received - ${JSON.stringify(data.bid.bidHash)} at p2p-server from :${JSON.stringify(socket.url)} at ${Date.now()}`);
                     this.bidManager.receiveBid(data.bid);
                     break;
                 default:
@@ -147,6 +156,8 @@ class P2PServer {
                 type: MESSAGE_TYPES.chain,
                 chain: this.blockchain.chain
             }));
+        // console.log(`➡️ Sent chain to peer: ${JSON.stringify(this.blockchain.chain)}`);
+        console.log("➡️ Sent chain to peer");
     }
 
     sendTransaction(socket, transaction) {
@@ -169,19 +180,26 @@ class P2PServer {
         });
     }
 
-    broadcastBlock(round) {
+    broadcastBlock(round, wallet) {
 
        const transactions =  this.transactionPool.getTransactionsForRound(this.transactionPool);
        const bidList= this.bidManager.bidList;
-       const block = new Block({index: this.blockchain.chain.length+1, transactions, previousHash: this.blockchain.getLatestBlock().hash, proposerPublicKey: this.bidManager.selfPublicKey, wallet: this.wallet});
-       const hashTableWithBids=  transformBidManagerToHashTable(bidList,round );
-       proposerPublicKey = findClosestBidPublicKey(hashTableWithBids, block.hash);
+       const block = new Block({index: this.blockchain.chain.length, transactions, previousHash: this.blockchain.getLastBlock().hash, proposerPublicKey: this.bidManager.selfPublicKey, wallet: wallet});
+       const hashTableWithBids=  transformBidManagerToHashTable(bidList, round);
+       const proposerPublicKey = findClosestBidPublicKey(hashTableWithBids, block.hash);
+       console.log(`Proposer for this round (${round}) is ${proposerPublicKey}`);
+       console.log(`Hash of the block to be proposed: ${block.hash}`);
 
-       if(proposerPublicKey !== this.bidManager.selfPublicKey){
-           this.sockets.forEach(socket => {
-               socket.send(JSON.stringify({ type: MESSAGE_TYPES.block, block }));
-           });
+       if(proposerPublicKey === this.bidManager.selfPublicKey){
+            console.log(`✅ I am the proposer for this round. Broadcasting and adding block: ${block.toString()}`);
+            this.blockchain.addBlockToChain(block);
+            console.log(`Socket list: ${this.sockets}`);
+            this.sockets.forEach(socket => {
+                socket.send(JSON.stringify({ type: MESSAGE_TYPES.block, block }));
+            });
+            return;
        }
+       console.log(`⛔ Not the proposer for this round. Proposer is ${proposerPublicKey}, but I am ${this.bidManager.selfPublicKey}. Block not broadcasted.`);
         // console.log(`BROADCASTED: ${block.toString()}`);
     }
 
