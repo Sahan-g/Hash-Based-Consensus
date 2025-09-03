@@ -163,7 +163,7 @@ const startServer = async () => {
 
     // Phase 3 starts at 9-minute mark
     setTimeout(() => {
-      console.log(`\n🌐 Phase 3 starting at ${new Date().toISOString()}`);
+      console.log(`\n🌐 Phase 3 starting at ${new Date().toISOString()}\n`);
       phase3();
     }, PHASE_3_START);    
   }
