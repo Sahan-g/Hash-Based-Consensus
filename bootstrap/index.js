@@ -3,10 +3,6 @@ const bodyParser = require('body-parser');
 const app = express();
 
 const PORT = 4000;
-const {
-  HEARTBEAT_INTERVAL,
-  HEARTBEAT_TIMEOUT,
-} = require("../config");
 
 let peers = [];
 let heartbeats = new Map();
@@ -51,8 +47,4 @@ app.post('/heartbeat', (req, res) => {
 
 app.listen(PORT,'0.0.0.0' ,() => {
     console.log(`Bootstrap server running on port ${PORT}`);
-
-    setInterval(() => {
-        // TODO 
-    }, HEARTBEAT_INTERVAL)
 });
