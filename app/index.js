@@ -24,8 +24,73 @@ const startServer = async () => {
   const wallet = await Wallet.loadOrCreate();
   const blockchain = await Blockchain.create(wallet);
   const tp = new TransactionPool();
-  const bidManager = new BidManager(wallet.publicKey, blockchain); 
-  const p2pServer = new P2PServer(blockchain, tp,bidManager);
+  const bidManager = new BidManager(wallet.publicKey, blockchain);
+  const p2pServer = new P2PServer(blockchain, tp, bidManager);
+
+  app.get("/blocks", (req, res) => {
+    res.json(blockchain.chain);
+  });
+
+  app.get("/transaction", (req, res) => {
+    res.json(tp.transactions);
+  });
+
+  app.get('/bids/:round', (req, res) => {
+      const { round } = req.params;
+      const bidList = bidManager.getAllBids(parseInt(round, 10));
+      if (bidList.length > 0) {
+          res.status(200).json(bidList);
+      }
+      else {
+          res.status(404).json({ message: 'No bids found for this round' });
+      }
+  })
+
+  // app.post("/transact", (req, res) => {
+  //   const { recipient, amount } = req.body;
+  //   const transaction = wallet.createTransaction(recipient, amount, tp, bc);
+  //   p2pServer.broadcastTransaction(transaction);
+
+  //   res.redirect("/transaction");
+  // });
+
+  // Create a sensor reading transaction (IoT)
+  app.post("/transact", (req, res) => {
+    try {
+      const { sensor_id, reading, metadata } = req.body;
+
+      // Basic validation
+      if (!sensor_id || typeof sensor_id !== "string") {
+        return res
+          .status(400)
+          .json({ ok: false, error: "sensor_id is required (string)" });
+      }
+      if (!reading || typeof reading !== "object" || Array.isArray(reading)) {
+        return res
+          .status(400)
+          .json({ ok: false, error: "reading must be a non-null object" });
+      }
+      if (
+        metadata != null &&
+        (typeof metadata !== "object" || Array.isArray(metadata))
+      ) {
+        return res
+          .status(400)
+          .json({ ok: false, error: "metadata must be an object if provided" });
+      }
+
+      const tx = wallet.createTransaction(sensor_id, reading, tp, metadata);
+      p2pServer.transactionPool.updateOrAddTransaction(tx)
+      p2pServer.broadcastTransaction(tx);
+
+      return res.status(201).json({ ok: true, transaction: tx });
+    } catch (err) {
+      console.error("Failed to create transaction:", err);
+      return res
+        .status(500)
+        .json({ ok: false, error: err.message || "internal error" });
+    }
+  });
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
@@ -47,7 +112,9 @@ const startServer = async () => {
    * Phase 1: publish random number
    */
   function phase1() {
+    console.log(bidManager.round);
     bidManager.round += 1;
+    console.log(bidManager.round);
     const bidPacket= bidManager.generateBid(bidManager.round, wallet);
     p2pServer.broadcastBid(bidPacket);
     console.log(`Round: ${bidPacket.round}`);

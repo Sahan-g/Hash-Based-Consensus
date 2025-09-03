@@ -24,11 +24,12 @@ class ChainUtil {
     return isVerified;
   }
 
-  static createHash(data) {
-    console.log(`Creating hash for data: ${data}`);
-    const hash = crypto.createHash('sha256').update(data).digest('hex');
-    console.log(`Generated hash: ${hash}`);
-    return hash;
+ static createHash(data) {
+  const dataString = typeof data === 'string' ? data : JSON.stringify(data);
+  console.log(`Creating hash for data: ${dataString}`);
+  const hash = crypto.createHash('sha256').update(dataString).digest('hex');
+  console.log(`Generated hash: ${hash}`);
+  return hash;
   }
 }
 

@@ -31,12 +31,15 @@ class Blockchain {
     }
 
     async addBlockToChain(block) {
+        console.log(this.chain);
+        console.log(block);
         if (Block.verifyBlock(block) && Block.isValidBlock(block, this.getLastBlock())) {
             this.chain.push(block);
             await db.saveChain(this.chain);
             console.log('👍 Block added to chain and saved to DB.');
+            return true;
         } else {
-            throw new Error('Invalid block');
+            console.log('❌ Invalid block. Not added to chain.');
         }
     }
 

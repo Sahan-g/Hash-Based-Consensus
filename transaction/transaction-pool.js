@@ -56,13 +56,22 @@ class TransactionPool {
     });
   }
 
-  removeConfirmedTransactions(confirmedTransactions) {
-    this.transactions = this.transactions.filter(
-      (t) => !confirmedTransactions.find((ct) => ct.id === t.id)
-    );
+removeConfirmedTransactions(confirmedTransactions) {
+  console.log(confirmedTransactions);
+
+  if (!Array.isArray(confirmedTransactions)) {
+    console.warn("⚠️ confirmedTransactions is not a valid array:", confirmedTransactions);
+    return;
   }
 
+  this.transactions = this.transactions.filter(
+    (t) => !confirmedTransactions.find((ct) => ct.id === t.id)
+  );
+}
+
+
    getTransactionsForRound(transactionPool) {
+    console.log(transactionPool)
     const allTxns = transactionPool.transactions;
     
     const roundStart = App.round_start;
