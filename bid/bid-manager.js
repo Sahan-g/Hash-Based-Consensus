@@ -71,8 +71,7 @@ class BidManager {
   } // 
 
   getAllBids(round) {
-    return this.bidList.get
-    (round) || [];
+    return this.bidList || [];
   }
 
   clearRound(round) {

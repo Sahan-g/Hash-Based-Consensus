@@ -97,6 +97,7 @@ class P2PServer {
 
 
         socket.on('close', () => {
+
             console.log(`Connection to peer ${peer} closed`);
         });
     }
@@ -107,7 +108,7 @@ class P2PServer {
         console.log(`New peer connected: ${socket.url}`);
         this.messageHandler(socket);
         this.sendChain(socket)
-        this.sendRound(socket, this.bidManager.round); 
+        //this.sendRound(socket, this.bidManager.round); 
     }
 
     messageHandler(socket) {
@@ -126,10 +127,10 @@ class P2PServer {
                 //     this.transactionPool.clear();
                 //     break;
                 case MESSAGE_TYPES.block:
-                    console.log(`📥 Block received - ${JSON.stringify(data.block.hash)} at p2p-server from :${JSON.stringify(socket.url)}`);
+                    console.log(`📥 Block received - ${JSON.stringify(data.block.hash)} with index ${JSON.stringify(data.block.index)} at p2p-server from :${JSON.stringify(socket.url)}`);
                     const isAdded = this.blockchain.addBlockToChain(data.block);
                     if (isAdded) {
-                        this.transactionPool.removeConfirmedTransactions(data.block.data);
+                        this.transactionPool.removeConfirmedTransactions(data.block.transactions);
                     }
                     console.log(peers)
                     break;
@@ -184,7 +185,7 @@ class P2PServer {
 
        const transactions =  this.transactionPool.getTransactionsForRound(this.transactionPool);
        const bidList= this.bidManager.bidList;
-       const block = new Block({index: this.blockchain.chain.length, transactions, previousHash: this.blockchain.getLastBlock().hash, proposerPublicKey: this.bidManager.selfPublicKey, wallet: wallet});
+       const block = new Block({index: this.blockchain.getLastBlock().index + 1, transactions, previousHash: this.blockchain.getLastBlock().hash, proposerPublicKey: this.bidManager.selfPublicKey, wallet: wallet});
        const hashTableWithBids=  transformBidManagerToHashTable(bidList, round);
        const proposerPublicKey = findClosestBidPublicKey(hashTableWithBids, block.hash);
        console.log(`Proposer for this round (${round}) is ${proposerPublicKey}`);
@@ -193,6 +194,7 @@ class P2PServer {
        if(proposerPublicKey === this.bidManager.selfPublicKey){
             console.log(`✅ I am the proposer for this round. Broadcasting and adding block: ${block.toString()}`);
             this.blockchain.addBlockToChain(block);
+            this.transactionPool.removeConfirmedTransactions(block.transactions);
             console.log(`Socket list: ${this.sockets}`);
             this.sockets.forEach(socket => {
                 socket.send(JSON.stringify({ type: MESSAGE_TYPES.block, block }));
