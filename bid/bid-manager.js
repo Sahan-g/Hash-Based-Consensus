@@ -16,10 +16,16 @@ const {
 } = require("./consensus");
 
 class BidManager {
-  constructor(selfPublicKey) {
+  constructor(selfPublicKey, blockchain) {
     this.selfPublicKey = selfPublicKey;
     this.bidList = new Map();
-    this.round = 0;
+    this.round = blockchain.getLastBlock().index + 1;
+    console.log(`BidManager initialized for round ${this.round}`);
+    this.phase1EndTime = null;
+  }
+
+  startPhase1() {
+    this.phase1EndTime = Date.now() + ROUND_INTERVAL;
   }
 
   generateBid(round, wallet) {
@@ -34,15 +40,28 @@ class BidManager {
       wallet,
     });
     this.addToBidList(bidPacket);
+    console.log(`📝 Bid generated for round ${bidPacket.round} : ${bidHash}`);
     return bidPacket;
   }
 
   receiveBid(bidPacket) {
+    if(Date.now() > this.phase1EndTime) {
+      console.log(`⛔ Bidding is closed, cannot add bid from ${bidPacket.publicKey}.`);
+      return false;
+    }
+
     if (!BidPacket.verifyBid(bidPacket)) return false;
 
     this.addToBidList(bidPacket);
 
     return true;
+  }
+
+  handleRound(round) {
+    if(this.round < round) {
+      this.round = round;
+      console.log(`🔄 Updated to new round: ${this.round}`);
+    }
   }
 
   selectProposer(round, blockHash) {
@@ -93,6 +112,8 @@ class BidManager {
 
     if (!roundBids.some((b) => b.publicKey === bidPacket.publicKey)) {
       roundBids.push(bidPacket);
+      console.log(`✅ Bid added for round ${round} from ${bidPacket.publicKey} at ${new Date().toISOString()}`);
+      console.log(`Current bids for round ${round}: ${JSON.stringify(this.bidList.get(round))}`);
     }
   }
 

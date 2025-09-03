@@ -12,7 +12,8 @@ class Block {
     }
 
     computeHash() {
-        const blockString = this.index + JSON.stringify(this.transactions) + this.previousHash + this.proposerPublicKey;
+        const blockString = this.index + JSON.stringify(this.transactions) + this.previousHash;
+        console.log(`Block string for hashing: ${blockString}`);
         return ChainUtil.createHash(blockString);
     } // removed timestamp
 
@@ -29,10 +30,16 @@ class Block {
     }
 
     static verifyBlock(block) {
-        if (block.hash !== block.computeHash()) {
+        const blockString = block.index + JSON.stringify(block.transactions) + block.previousHash;
+        console.log(`Block string for hashing: ${blockString}`);
+        console.log(`Expected hash: ${block.hash}`);
+        if (block.hash !== ChainUtil.createHash(blockString)) {
+            console.log("Invalid block hash");
             return false;
         }
+        console.log(`Verifying block with proposerPublicKey: ${block.proposerPublicKey}, hash: ${block.hash}`);
         if (!ChainUtil.verifySignature(block.proposerPublicKey, block.signature, block.hash)) {
+            console.log("Invalid block signature");
             return false;
         }
         console.log("Block verified successfully");
@@ -41,10 +48,11 @@ class Block {
 
     static isValidBlock(block, previousBlock) {
         if (block.index !== previousBlock.index + 1) {
-            console.log("Invalid block index");
+            console.log(`Invalid block index: ${block.index} expected: ${previousBlock.index + 1}`);
             return false;
         }
         if (block.previousHash !== previousBlock.hash) {
+            console.log(`Invalid previous hash: ${block} expected: ${previousBlock}`);
             console.log("Invalid previous hash");
             return false;
         }

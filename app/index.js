@@ -6,6 +6,7 @@ const Wallet = require("../wallet");
 const TransactionPool = require("../transaction/transaction-pool");
 const BidManager = require("../bid/bid-manager");
 const P2PServer = require("./p2p-server");
+const consensus = require("../bid/consensus");
 
 const {
   ROUND_INTERVAL,
@@ -13,6 +14,7 @@ const {
   PHASE_3_START,
 } = require("../config");
 const PORT = process.env.PORT || 3001;
+var round_start;
 
 const app = express();
 
@@ -22,7 +24,7 @@ const startServer = async () => {
   const wallet = await Wallet.loadOrCreate();
   const blockchain = await Blockchain.create(wallet);
   const tp = new TransactionPool();
-  const bidManager = new BidManager(wallet.publicKey); 
+  const bidManager = new BidManager(wallet.publicKey, blockchain); 
   const p2pServer = new P2PServer(blockchain, tp,bidManager);
 
   app.listen(PORT, () => {
@@ -45,8 +47,10 @@ const startServer = async () => {
    * Phase 1: publish random number
    */
   function phase1() {
-    const bidPacket= p2pServer.bidManager.generateBid(p2pServer.bidManager.round, wallet);
+    bidManager.round += 1;
+    const bidPacket= bidManager.generateBid(bidManager.round, wallet);
     p2pServer.broadcastBid(bidPacket);
+    console.log(`Round: ${bidPacket.round}`);
   }
 
   /**
@@ -61,13 +65,15 @@ const startServer = async () => {
    * Phase 3: block proposal
    */
   async function phase3() {
-    
+    console.log(`COnsidering round: ${bidManager.round}`);
+    p2pServer.broadcastBlock(bidManager.round, wallet);
   }
 
   /**
    * Start a round-aligned loop
    */
   function startRoundScheduler() {
+    console.log(`TIme now: ${new Date().toISOString()}`)
     const delay = getNextAlignedDelay(ROUND_INTERVAL);
     console.log(`First round starts in ${delay / 1000}s`);
 
@@ -81,19 +87,29 @@ const startServer = async () => {
    * One full 10-minute round
    */
   function runRound() {
+    round_start = Date.now();
+    bidManager.startPhase1();
     console.log(`\n🌐 Starting new round at ${new Date().toISOString()}`);
 
     phase1(); // Immediately run phase 1
-
+    console.log(`🌐 Bid generation and broadcasting done at ${new Date().toISOString()}`);
+    console.log(`ROund: ${bidManager.round}`);  
     // Phase 2 starts after 2 minutes
     setTimeout(() => {
+      console.log(`Collected ${bidManager.bidList.get(bidManager.round).length} bids so far for round ${bidManager.round}`);
+      console.log(`Bids: ${JSON.stringify(bidManager.bidList)}`);
+      console.log(`\n🌐 Phase 2 starting at ${new Date().toISOString()}`);
       phase2();
     }, PHASE_1_DURATION);
 
     // Phase 3 starts at 9-minute mark
     setTimeout(() => {
+      console.log(`\n🌐 Phase 3 starting at ${new Date().toISOString()}`);
+      console.log(`🌐 Collected ${bidManager.bidList.get(bidManager.round).length} bids for round ${bidManager.round}`);
       phase3();
     }, PHASE_3_START);
+
+    
   }
 
   startRoundScheduler();

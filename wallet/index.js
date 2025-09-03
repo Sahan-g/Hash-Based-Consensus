@@ -25,6 +25,7 @@ class Wallet {
     }
 
     wallet.publicKey = wallet.keyPair.getPublic().encode("hex");
+    console.log(`Wallet public key: ${wallet.publicKey}`);
     return wallet;
   }
 
