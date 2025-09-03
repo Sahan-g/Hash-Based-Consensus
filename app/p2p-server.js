@@ -120,14 +120,13 @@ class P2PServer {
                     if (isAdded) {
                         this.transactionPool.removeConfirmedTransactions(data.block.transactions);
                     }
-                    console.log(peers)
                     break;
                 case MESSAGE_TYPES.round:
                     console.log(`📥 Received round message: ${JSON.stringify(data.round)}`);// handle received round
                     this.bidManager.handleRound(data.round); 
                     break;
                 case MESSAGE_TYPES.bid:
-                    console.log(`📥Bid received - ${JSON.stringify(data.bid.bidHash)} at p2p-server`);
+                    console.log(`📥 Bid received - ${JSON.stringify(data.bid.bidHash)} at p2p-server`);
                     this.bidManager.receiveBid(data.bid);
                     break;
                 default:
@@ -178,7 +177,7 @@ class P2PServer {
        console.log(`🌐 Hash of the block to be proposed: ${block.hash}`);
 
        if(proposerPublicKey === this.bidManager.selfPublicKey){
-            console.log(`✅ Selected as the proposer for this round. Broadcasting and adding block: ${block.toString()}`);
+            console.log(`✅ Selected as the proposer for this round. Broadcasting and adding block`);
             this.blockchain.addBlockToChain(block);
             this.transactionPool.removeConfirmedTransactions(block.transactions);
             this.sockets.forEach(socket => {

@@ -31,7 +31,7 @@ class Blockchain {
     }
 
     async addBlockToChain(block) {
-        console.log(this.chain);
+        // console.log(this.chain);
         console.log(block);
         if (Block.verifyBlock(block) && Block.isValidBlock(block, this.getLastBlock())) {
             this.chain.push(block);
