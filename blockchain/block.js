@@ -3,7 +3,7 @@ const ChainUtil = require('../chain-util');
 class Block {
     constructor({index, timestamp, transactions, previousHash, proposerPublicKey, hash, signature, wallet}) {
         this.index = index; 
-        this.timestamp = timestamp;
+        this.timestamp = Date.now();
         this.transactions = transactions; 
         this.previousHash = previousHash; 
         this.proposerPublicKey = proposerPublicKey; 
@@ -12,27 +12,30 @@ class Block {
     }
 
     computeHash() {
-        const blockString = this.index + this.timestamp + JSON.stringify(this.transactions) + this.previousHash + this.proposerPublicKey;
+        const blockString = this.index + JSON.stringify(this.transactions) + this.previousHash;
+        // console.log(`Block string for hashing: ${blockString}`);
         return ChainUtil.createHash(blockString);
-    }
+    } // removed timestamp
 
     static genesis(wallet) {
         return new Block({
             index: 0,
-            timestamp: Date.now(),
             transactions: [],
             previousHash: '0',
             proposerPublicKey: 'GENESIS',
-            hash: '0000ed9e07bf3d957688ed7ac3b93aa78c24afaad55056818faab9f03be9aaec',
             wallet: wallet
         });
     }
 
     static verifyBlock(block) {
-        if (block.hash !== block.computeHash()) {
+        const blockString = block.index + JSON.stringify(block.transactions) + block.previousHash;
+        if (block.hash !== ChainUtil.createHash(blockString)) {
+            console.log("Invalid block hash");
             return false;
         }
+
         if (!ChainUtil.verifySignature(block.proposerPublicKey, block.signature, block.hash)) {
+            console.log("Invalid block signature");
             return false;
         }
         console.log("Block verified successfully");
@@ -41,11 +44,11 @@ class Block {
 
     static isValidBlock(block, previousBlock) {
         if (block.index !== previousBlock.index + 1) {
-            console.log("Invalid block index");
+            console.log(`Invalid block index: ${block.index} expected: ${previousBlock.index + 1}`);
             return false;
         }
         if (block.previousHash !== previousBlock.hash) {
-            console.log("Invalid previous hash");
+            console.log(`Invalid previous hash: ${block} expected: ${previousBlock}`);
             return false;
         }
         if (block.timestamp <= previousBlock.timestamp) {
@@ -64,6 +67,3 @@ class Block {
 }
 
 module.exports = Block;
-
-// TODO: Create block considering only transactions happened upto 8 mins
-// TODO: In validating block, must check timestamp, whether it happened at or before 8 mins

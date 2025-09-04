@@ -5,7 +5,6 @@ const db = require("../database");
 
 class Wallet {
   constructor() {
-    this.balance = INITIAL_BALANCE;
     this.keyPair = null;
     this.publicKey = null;
   }
@@ -26,6 +25,7 @@ class Wallet {
     }
 
     wallet.publicKey = wallet.keyPair.getPublic().encode("hex");
+    console.log(`Wallet public key: ${wallet.publicKey}`);
     return wallet;
   }
 
@@ -39,7 +39,7 @@ class Wallet {
     return this.keyPair.sign(dataHash);
   }
 
-  createTransaction(recipient, amount, transactionPool, blockchain) {
+  createTransactionsold(recipient, amount, transactionPool, blockchain) {
     this.balance = this.calculateBalance(blockchain);
     if (amount > this.balance) {
       console.error(`Amount: ${amount} exceeds balance`);
@@ -56,40 +56,30 @@ class Wallet {
     return transaction;
   }
 
-  calculateBalance(blockchain) {
-    console.log(`Calculating balance for wallet: ${this.publicKey}`);
-    console.log("The blockchain is : ", blockchain);
-    let balance = this.balance;
-    let transactions = [];
-    blockchain.chain.forEach((block) =>
-      block.transactions.forEach((transaction) => {
-        transactions.push(transaction);
-      })
-    );
-
-    const walletInputTs = transactions.filter(
-      (transaction) => transaction.input.address === this.publicKey
-    );
-    let startTime = 0;
-    if (walletInputTs.length > 0) {
-      const recentInputT = walletInputTs.reduce((prev, current) => {
-        return prev.timestamp > current.timestamp ? prev : current;
-      });
-      balance = recentInputT.outputs.find(
-        (output) => output.address === this.publicKey
-      ).amount;
-      startTime = recentInputT.input.timestamp;
+  createTransaction(
+    sensor_id,
+    reading,
+    transactionPool = null,
+    metadata = null
+  ) {
+    if (!sensor_id) {
+      throw new Error("sensor_id is required");
     }
-    transactions.forEach((transaction) => {
-      if (transaction.input.timestamp > startTime) {
-        transaction.outputs.find((output) => {
-          if (output.address === this.publicKey) {
-            balance += output.amount;
-          }
-        });
-      }
+    if (!reading || typeof reading !== "object") {
+      throw new Error("reading must be a non-null object");
+    }
+
+    const tx = Transaction.fromSensorReading(this, {
+      sensor_id,
+      reading,
+      metadata,
     });
-    return balance;
+
+    if (transactionPool) {
+      transactionPool.updateOrAddTransaction(tx);
+    }
+
+    return tx;
   }
 
   static blockchainWallet() {

@@ -18,11 +18,16 @@ class ChainUtil {
   // }
 
   static verifySignature(publicKey, signature, dataHash) {
-    return ec.keyFromPublic(publicKey, "hex").verify(dataHash, signature);
+    console.log(`Verifying signature for dataHash: ${dataHash} with publicKey: ${publicKey}`);
+    const isVerified = ec.keyFromPublic(publicKey, "hex").verify(dataHash, signature);
+    console.log(`✅ Signature verified: ${isVerified}`);
+    return isVerified;
   }
 
-  static createHash(data) {
-    return crypto.createHash('sha256').update(data).digest('hex');
+ static createHash(data) {
+  const dataString = typeof data === 'string' ? data : JSON.stringify(data);
+  const hash = crypto.createHash('sha256').update(dataString).digest('hex');
+  return hash;
   }
 }
 

@@ -1,6 +1,8 @@
 const Block = require('./block');
 const db = require('../database');
 const { blockchainWallet } = require('../wallet');
+const ChainUtil = require('../chain-util');
+const BidManager = require('../bid/bid-manager');
 
 class Blockchain {
     constructor() {
@@ -28,34 +30,44 @@ class Blockchain {
         return this.chain[this.chain.length - 1]; 
     }
 
-    async addBlock(block) {
+    async addBlockToChain(block) {
+        // console.log(this.chain);
+        console.log(block);
         if (Block.verifyBlock(block) && Block.isValidBlock(block, this.getLastBlock())) {
             this.chain.push(block);
             await db.saveChain(this.chain);
+            console.log('👍 Block added to chain and saved to DB.');
+            return true;
         } else {
-            throw new Error('Invalid block');
+            console.log('❌ Invalid block. Not added to chain.');
         }
     }
 
     isChainValid(chain) {
-        for (let i = 1; i <= chain.length; i++) {
-            const currentBlock = chain[i];
-            const previousBlock = chain[i - 1];
+        if(chain.length === 1) {
+            return true;
+        }
+        for (let i = 1; i < chain.length; i++) {
+            const currentBlock = Block.fromObject(chain[i]);
+            const previousBlock = Block.fromObject(chain[i - 1]);
             
             if (currentBlock.previousHash !== previousBlock.hash) {
                 return false;
             }
 
-            const currentBlockHash = currentBlock.computeHash();
+            const blockString = currentBlock.index + JSON.stringify(currentBlock.transactions) + currentBlock.previousHash;
+            const currentBlockHash = ChainUtil.createHash(blockString);
             if (currentBlockHash !== currentBlock.hash) {
+                console.log(`Invalid hash at block ${i}: computed ${currentBlockHash}, expected ${currentBlock.hash}`);
                 return false;
             }
         }
+        console.log("👍 Chain is valid");
 
         return true;
     }
 
-    async replaceChain(newChain) {
+    async replaceChain(newChain, bidManager) {
         if (newChain.length < this.chain.length) {
             console.log('Received chain is not longer than the current chain. Ignoring.');
             return;
@@ -70,6 +82,7 @@ class Blockchain {
         this.chain = newChain;
         await db.saveChain(this.chain);
         console.log('Replaced chain and saved it to DB.');
+        
     }
 
 

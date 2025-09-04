@@ -2,12 +2,17 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const Block = require("../blockchain/block");
 const Blockchain = require("../blockchain/index");
-
 const Wallet = require("../wallet");
 const TransactionPool = require("../transaction/transaction-pool");
-const { DIFFICULTY } = require("../config");
 const BidManager = require("../bid/bid-manager");
+const P2PServer = require("./p2p-server");
+const consensus = require("../bid/consensus");
 
+const {
+  ROUND_INTERVAL,
+  PHASE_1_DURATION,
+  PHASE_3_START,
+} = require("../config");
 const PORT = process.env.PORT || 3001;
 
 const app = express();
@@ -18,155 +23,152 @@ const startServer = async () => {
   const wallet = await Wallet.loadOrCreate();
   const blockchain = await Blockchain.create(wallet);
   const tp = new TransactionPool();
-  const bidManager = new BidManager(wallet.publicKey);
+  const bidManager = new BidManager(wallet.publicKey, blockchain);
+  const p2pServer = new P2PServer(blockchain, tp, bidManager);
 
-  // app.post('/createBlock', (req, res) => {
-  //     const { index, timestamp, transactions, previousHash, proposerPublicKey } = req.body;
-  //     try {
-  //         console.log('Creating a new block');
-  //         const newBlock = new Block({ index, timestamp, transactions, previousHash, proposerPublicKey, wallet });
-  //         res.status(201).json(newBlock);
-  //     } catch (error) {
-  //         res.status(400).json({ error: 'Invalid block data' });
-  //     }
-  // });
+  app.get("/blocks", (req, res) => {
+    res.json(blockchain.chain);
+  });
 
-  // app.post('/addBlock', (req, res) => {
-  //     const block = req.body;
+  app.get("/transaction", (req, res) => {
+    res.json(tp.transactions);
+  });
 
-  //     try {
-  //       const newBlock = new Block({...block, wallet});
-  //         blockchain.addBlock(newBlock);
-  //         res.status(200).json({ message: 'Block added successfully', block });
-  //     } catch (error) {
-  //         res.status(400).json({ error: error.message });
-  //     }
-  // })
-
-  // app.get('/chain', (_req, res) => {
-  //     res.status(200).json(blockchain.chain);
-  // })
-
-  // app.get("/transactions", (req, res) => {
-  //   res.json(tp.transactions);
-  // });
+  app.get('/bids/:round', (req, res) => {
+      const { round } = req.params;
+      const bidList = bidManager.getAllBids(parseInt(round, 10));
+      if (bidList.length > 0) {
+          res.status(200).json(bidList);
+      }
+      else {
+          res.status(404).json({ message: 'No bids found for this round' });
+      }
+  })
 
   // app.post("/transact", (req, res) => {
   //   const { recipient, amount } = req.body;
+  //   const transaction = wallet.createTransaction(recipient, amount, tp, bc);
+  //   p2pServer.broadcastTransaction(transaction);
 
-  //   if (!recipient || !amount) {
-  //     return res.status(400).send("Recipient and amount are required.");
-  //   }
-
-  //   const transaction = wallet.createTransaction(
-  //     recipient,
-  //     amount,
-  //     tp,
-  //     blockchain
-  //   );
-  //   if (transaction) {
-  //     console.log("Transaction created:", transaction);
-  //   }
-
-  //   res.redirect("/transactions");
+  //   res.redirect("/transaction");
   // });
 
-  // app.get("/public-key", (req, res) => {
-  //   res.json({ publicKey: wallet.publicKey });
-  // });
+  // Create a sensor reading transaction (IoT)
+  app.post("/transact", (req, res) => {
+    try {
+      const { sensor_id, reading, metadata } = req.body;
 
-  // app.post('/generateBid', (req, res) => {
-  //     const { round } = req.body;
-  //     try {
-  //         const bidPacket = bidManager.generateBid(round, wallet);
-  //         res.status(201).json(bidPacket);
-  //     } catch (error) {
-  //         res.status(400).json({ error: 'Invalid bid data' });
-  //     }
-  // })
+      // Basic validation
+      if (!sensor_id || typeof sensor_id !== "string") {
+        return res
+          .status(400)
+          .json({ ok: false, error: "sensor_id is required (string)" });
+      }
+      if (!reading || typeof reading !== "object" || Array.isArray(reading)) {
+        return res
+          .status(400)
+          .json({ ok: false, error: "reading must be a non-null object" });
+      }
+      if (
+        metadata != null &&
+        (typeof metadata !== "object" || Array.isArray(metadata))
+      ) {
+        return res
+          .status(400)
+          .json({ ok: false, error: "metadata must be an object if provided" });
+      }
 
-  // app.post('/receiveBid', (req, res) => {
-  //     const bidPacket = req.body;
-  //     if (bidManager.receiveBid(bidPacket)) {
-  //         res.status(200).json({ message: 'Bid received, verified and added successfully' });
-  //     } else {
-  //         res.status(400).json({ error: 'Invalid bid packet' });
-  //     }
-  // })
+      const tx = wallet.createTransaction(sensor_id, reading, tp, metadata);
+      p2pServer.transactionPool.updateOrAddTransaction(tx)
+      p2pServer.broadcastTransaction(tx);
 
-  // app.get('/getBids/:round', (req, res) => {
-  //     const { round } = req.params;
-  //     const bidList = bidManager.getAllBids(parseInt(round, 10));
-  //     if (bidList.length > 0) {
-  //         res.status(200).json(bidList);
-  //     }
-  //     else {
-  //         res.status(404).json({ message: 'No bids found for this round' });
-  //     }
-  // })
+      return res.status(201).json({ ok: true, transaction: tx });
+    } catch (err) {
+      console.error("Failed to create transaction:", err);
+      return res
+        .status(500)
+        .json({ ok: false, error: err.message || "internal error" });
+    }
+  });
 
-  // app.get('/selectProposer', (req, res) => {
-  //     const { round, blockHash } = req.body;
-  //     const publicKey = bidManager.selectProposer(round, blockHash);
-  //     if (publicKey) {
-  //         res.status(200).json({ proposerPublicKey: publicKey });
-  //     } else {
-  //         res.status(404).json({ message: 'No proposer found for this round' });
-  //     }
-  // })
+  app.listen(PORT, () => {
+    console.log(`\nServer is running on port ${PORT}`);
+  });
 
-  // createBlockFromTransactions = () => {
-  //   const transactions = tp.validTransactions();
-  //   console.log("valid Transactions : ", transactions);
+  p2pServer.listen();
 
-  //   if (transactions.length == 0) {
-  //     console.log("No valid transactions to include in block!");
-  //     return;
-  //   }
+  p2pServer.syncChains();
 
-  //   const lastBlock = blockchain.getLastBlock();
-  //   const newBlock = new Block({
-  //     index: lastBlock.index + 1,
-  //     timestamp: Date.now(),
-  //     transactions: transactions,
-  //     previousHash: lastBlock.hash,
-  //     proposerPublicKey: wallet.publicKey,
-  //     wallet: wallet,
-  //   });
+  /**
+   * Utility: get aligned time offset for round loop
+   */
+  function getNextAlignedDelay(intervalMs) {
+    const now = Date.now();
+    return intervalMs - (now % intervalMs);
+  }
 
-  //   try {
-  //     blockchain.addBlock(newBlock);
-  //     console.log("new blockchain : ", blockchain);
-  //     tp.removeConfirmedTransactions(transactions);
-  //     console.log(
-  //       `Block #${newBlock.index} created with ${transactions.length} transactions.`
-  //     );
-  //   } catch (error) {
-  //     console.error("Failed to add block:", error.message);
-  //   }
-  // };
+  /**
+   * Phase 1: publish random number
+   */
+  function phase1() {
+    bidManager.round += 1;
+    const bidPacket= bidManager.generateBid(bidManager.round, wallet);
+    p2pServer.broadcastBid(bidPacket);
+    console.log(`This is Round: ${bidPacket.round}`);
+  }
 
-  // const scheduleNextBlock = () => {
-  //   const now = Date.now();
+  /**
+   * Phase 2: intermediate phase (2–9 min)
+   */
+  function phase2() {
+    console.log(`[${new Date().toISOString()}] Phase 2: Waiting for leader...`);
+    // Collect random numbers, do nothing
+  }
 
-  //   // const INTERVAL = 8 * 60 * 1000;
-  //   const INTERVAL = 1 * 60 * 1000;
+  /**
+   * Phase 3: block proposal
+   */
+  async function phase3() {
+    p2pServer.broadcastBlock(bidManager.round, wallet);
+  }
 
-  //   const timeToNextRound = INTERVAL - (now % INTERVAL);
-  //   console.log(`Next block creation scheduled in ${timeToNextRound / 1000}s`);
+  /**
+   * Start a round-aligned loop
+   */
+  function startRoundScheduler() {
+    console.log(`\n🕣 Time now: ${new Date().toISOString()}`)
+    const delay = getNextAlignedDelay(ROUND_INTERVAL);
+    console.log(`⏱ First round starts in ${delay / 1000}s`);
 
-  //   setTimeout(() => {
-  //     console.log("create a new block from transaction pool");
-  //     createBlockFromTransactions();
-  //     scheduleNextBlock();
-  //   }, timeToNextRound);
-  // };
+    setTimeout(() => {
+      runRound(); // first round
+      setInterval(runRound, ROUND_INTERVAL); // repeat
+    }, delay);
+  }
 
-  // scheduleNextBlock();
+  /**
+   * One full 10-minute round
+   */
+  function runRound() {
+    console.log(`\n🌐 Starting new round at ${new Date().toISOString()}\n`);
+    phase1(); // Immediately run phase 1
+    console.log(`🌐 Bid generation and broadcasting done at ${new Date().toISOString()}`); 
+
+    // Phase 2 starts after 2 minutes
+    setTimeout(() => {
+      console.log(`📜 Collected ${bidManager.bidList.get(bidManager.round).length} bids so far for round ${bidManager.round}`);
+      console.log(`\n🌐 Phase 2 starting at ${new Date().toISOString()}\n`);
+      phase2();
+    }, PHASE_1_DURATION);
+
+    // Phase 3 starts at 9-minute mark
+    setTimeout(() => {
+      console.log(`\n🌐 Phase 3 starting at ${new Date().toISOString()}\n`);
+      phase3();
+    }, PHASE_3_START);    
+  }
+
+  startRoundScheduler();
 };
-
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
 
 startServer();
