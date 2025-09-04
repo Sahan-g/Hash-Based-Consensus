@@ -1,7 +1,7 @@
 const Transaction = require("./transaction");
-const App = require("../app/index");
+const Block = require("../blockchain/block");
 
-const {TRANSACTION_COLLECTION_DURATION} = require("../config");
+const {ROUND_INTERVAL} = require("../config");
 
 class TransactionPool {
   constructor() {
@@ -70,12 +70,11 @@ removeConfirmedTransactions(confirmedTransactions) {
 }
 
 
-   getTransactionsForRound(transactionPool) {
-    console.log(transactionPool)
+   getTransactionsForRound(transactionPool,wallet,round) {
     const allTxns = transactionPool.transactions;
-    
-    const roundStart = App.round_start;
-    const roundEndLimit = roundStart + TRANSACTION_COLLECTION_DURATION; // 8-minute mark
+    console.log("all tx:", this.transactions)
+    const roundStart = Block.genesis(wallet).timestamp + round * ROUND_INTERVAL;
+    const roundEndLimit = roundStart + 8 * 60 * 1000; // 8-minute mark
 
     // Filter and sort
     const filteredTxns = allTxns
@@ -83,7 +82,7 @@ removeConfirmedTransactions(confirmedTransactions) {
         (txn) =>  txn.timestamp < roundEndLimit // lower limit removed because since we consider txns only upto  8 minutes some will be left for the next round
       )
       .sort((a, b) => a.timestamp - b.timestamp);
-
+      console.log("filtered:",filteredTxns)
     return filteredTxns;
   }
 }
