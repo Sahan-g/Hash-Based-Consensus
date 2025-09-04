@@ -375,32 +375,35 @@ function generateLargeBidHashTable(count = 1000) {
   return largeBidHashTable;
 }
 
-// Performance tests
-console.log("=== Performance Testing ===");
+function runPerformanceTests() {
+  // Performance tests
+  console.log("=== Performance Testing ===");
 
-// Test with small dataset (8 entries)
-const smallResults = performanceTest(bidHashTable, "Small Dataset (8 entries)");
+  // Test with small dataset (8 entries)
+  const smallResults = performanceTest(bidHashTable, "Small Dataset (8 entries)");
 
-// Test with large dataset (1000 entries)
-const largeBidHashTable = generateLargeBidHashTable(1000);
-const largeResults = performanceTest(
-  largeBidHashTable,
-  "Large Dataset (1000 entries)"
-);
+  // Test with large dataset (25000 entries)
+  const largeBidHashTable = generateLargeBidHashTable(25000);
+  const largeResults = performanceTest(
+    largeBidHashTable,
+    "Large Dataset (25000 entries)"
+  );
 
-// Performance analysis
-console.log("\n=== Performance Analysis ===");
-console.log(`Small dataset (${smallResults.entryCount} entries):`);
-console.log(`  - Array creation: ${smallResults.arrayCreation.toFixed(3)}ms`);
-console.log(`  - Sorting: ${smallResults.sorting.toFixed(3)}ms`);
-console.log(`  - Binary search: ${smallResults.searching.toFixed(3)}ms`);
-console.log(`  - Total: ${smallResults.total.toFixed(3)}ms`);
+  // Performance analysis
+  console.log("\n=== Performance Analysis ===");
+  console.log(`Small dataset (${smallResults.entryCount} entries):`);
+  console.log(`  - Array creation: ${smallResults.arrayCreation.toFixed(3)}ms`);
+  console.log(`  - Sorting: ${smallResults.sorting.toFixed(3)}ms`);
+  console.log(`  - Binary search: ${smallResults.searching.toFixed(3)}ms`);
+  console.log(`  - Total: ${smallResults.total.toFixed(3)}ms`);
 
-console.log(`\nLarge dataset (${largeResults.entryCount} entries):`);
-console.log(`  - Array creation: ${largeResults.arrayCreation.toFixed(3)}ms`);
-console.log(`  - Sorting: ${largeResults.sorting.toFixed(3)}ms`);
-console.log(`  - Binary search: ${largeResults.searching.toFixed(3)}ms`);
-console.log(`  - Total: ${largeResults.total.toFixed(3)}ms`);
+  console.log(`\nLarge dataset (${largeResults.entryCount} entries):`);
+  console.log(`  - Array creation: ${largeResults.arrayCreation.toFixed(3)}ms`);
+  console.log(`  - Sorting: ${largeResults.sorting.toFixed(3)}ms`);
+  console.log(`  - Binary search: ${largeResults.searching.toFixed(3)}ms`);
+  console.log(`  - Total: ${largeResults.total.toFixed(3)}ms`);
+}
+
 
 // // Example target bid hash
 // const targetBidHash = "8a2d64b7f9c1e3a5b8d7f2c4e6a9b3d5f8c1e4a7b0d3f6c9e2a5d8f1c4e7a0b3d6";
@@ -415,6 +418,4 @@ module.exports = {
   sortBidsOptimized,
   findClosestBidBinarySearch,
   findClosestBidPublicKey,
-  performanceTest,
-  generateLargeBidHashTable,
 };

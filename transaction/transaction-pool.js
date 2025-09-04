@@ -1,4 +1,7 @@
 const Transaction = require("./transaction");
+const Block = require("../blockchain/block");
+
+const {ROUND_INTERVAL} = require("../config");
 
 class TransactionPool {
   constructor() {
@@ -53,10 +56,34 @@ class TransactionPool {
     });
   }
 
-  removeConfirmedTransactions(confirmedTransactions) {
-    this.transactions = this.transactions.filter(
-      (t) => !confirmedTransactions.find((ct) => ct.id === t.id)
-    );
+removeConfirmedTransactions(confirmedTransactions) {
+  console.log(confirmedTransactions);
+
+  if (!Array.isArray(confirmedTransactions)) {
+    console.warn("⚠️ confirmedTransactions is not a valid array:", confirmedTransactions);
+    return;
+  }
+
+  this.transactions = this.transactions.filter(
+    (t) => !confirmedTransactions.find((ct) => ct.id === t.id)
+  );
+}
+
+
+   getTransactionsForRound(transactionPool,wallet,round) {
+    const allTxns = transactionPool.transactions;
+    console.log("all tx:", this.transactions)
+    const roundStart = Block.genesis(wallet).timestamp + round * ROUND_INTERVAL;
+    const roundEndLimit = roundStart + 8 * 60 * 1000; // 8-minute mark
+
+    // Filter and sort
+    const filteredTxns = allTxns
+      .filter(
+        (txn) =>  txn.timestamp < roundEndLimit // lower limit removed because since we consider txns only upto  8 minutes some will be left for the next round
+      )
+      .sort((a, b) => a.timestamp - b.timestamp);
+      console.log("filtered:",filteredTxns)
+    return filteredTxns;
   }
 }
 
