@@ -182,8 +182,9 @@ class P2PServer {
     }
 
     broadcastBlock(round, wallet) {
-
-       const transactions =  this.transactionPool.getTransactionsForRound(this.transactionPool);
+       console.log("hit")
+       console.log(this.transactionPool)
+       const transactions =  this.transactionPool.getTransactionsForRound(this.transactionPool, wallet,this.bidManager.round);
        const bidList= this.bidManager.bidList;
        const block = new Block({index: this.blockchain.getLastBlock().index + 1, transactions, previousHash: this.blockchain.getLastBlock().hash, proposerPublicKey: this.bidManager.selfPublicKey, wallet: wallet});
        const hashTableWithBids=  transformBidManagerToHashTable(bidList, round);

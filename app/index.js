@@ -112,9 +112,7 @@ const startServer = async () => {
    * Phase 1: publish random number
    */
   function phase1() {
-    console.log(bidManager.round);
     bidManager.round += 1;
-    console.log(bidManager.round);
     const bidPacket= bidManager.generateBid(bidManager.round, wallet);
     p2pServer.broadcastBid(bidPacket);
     console.log(`Round: ${bidPacket.round}`);
