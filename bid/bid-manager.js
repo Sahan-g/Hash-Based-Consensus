@@ -20,12 +20,6 @@ class BidManager {
     this.selfPublicKey = selfPublicKey;
     this.bidList = new Map();
     this.round = blockchain.getLastBlock().index + 1;
-    console.log(`BidManager initialized for round ${this.round}`);
-    this.phase1EndTime = null;
-  }
-
-  startPhase1() {
-    this.phase1EndTime = Date.now() + ROUND_INTERVAL;
   }
 
   generateBid(round, wallet) {
@@ -45,11 +39,6 @@ class BidManager {
   }
 
   receiveBid(bidPacket) {
-    if(Date.now() > this.phase1EndTime) {
-      console.log(`⛔ Bidding is closed, cannot add bid from ${bidPacket.publicKey}.`);
-      return false;
-    }
-
     if (!BidPacket.verifyBid(bidPacket)) return false;
 
     this.addToBidList(bidPacket);
@@ -71,8 +60,7 @@ class BidManager {
   } // 
 
   getAllBids(round) {
-    return this.bidList.get
-    (round) || [];
+    return this.bidList || [];
   }
 
   clearRound(round) {
@@ -113,7 +101,7 @@ class BidManager {
     if (!roundBids.some((b) => b.publicKey === bidPacket.publicKey)) {
       roundBids.push(bidPacket);
       console.log(`✅ Bid added for round ${round} from ${bidPacket.publicKey} at ${new Date().toISOString()}`);
-      console.log(`Current bids for round ${round}: ${JSON.stringify(this.bidList.get(round))}`);
+      // console.log(`Current bids for round ${round}: ${JSON.stringify(this.bidList.get(round))}`);
     }
   }
 

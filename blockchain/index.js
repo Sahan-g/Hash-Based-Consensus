@@ -31,12 +31,15 @@ class Blockchain {
     }
 
     async addBlockToChain(block) {
+        // console.log(this.chain);
+        console.log(block);
         if (Block.verifyBlock(block) && Block.isValidBlock(block, this.getLastBlock())) {
             this.chain.push(block);
             await db.saveChain(this.chain);
             console.log('👍 Block added to chain and saved to DB.');
+            return true;
         } else {
-            throw new Error('Invalid block');
+            console.log('❌ Invalid block. Not added to chain.');
         }
     }
 
@@ -47,16 +50,12 @@ class Blockchain {
         for (let i = 1; i < chain.length; i++) {
             const currentBlock = Block.fromObject(chain[i]);
             const previousBlock = Block.fromObject(chain[i - 1]);
-
-            // console.log(`CURRENTBLOCK: ${JSON.stringify(chain[i])}`);
-            // console.log(`PREVIOUSBLOCK: ${JSON.stringify(chain[i-1])}`);
             
             if (currentBlock.previousHash !== previousBlock.hash) {
                 return false;
             }
 
             const blockString = currentBlock.index + JSON.stringify(currentBlock.transactions) + currentBlock.previousHash;
-            console.log(`Block string for validation: ${blockString}`);
             const currentBlockHash = ChainUtil.createHash(blockString);
             if (currentBlockHash !== currentBlock.hash) {
                 console.log(`Invalid hash at block ${i}: computed ${currentBlockHash}, expected ${currentBlock.hash}`);
@@ -69,7 +68,6 @@ class Blockchain {
     }
 
     async replaceChain(newChain, bidManager) {
-        console.log(`RECEIVED CHAIN: ${JSON.stringify(newChain)}`);
         if (newChain.length < this.chain.length) {
             console.log('Received chain is not longer than the current chain. Ignoring.');
             return;
@@ -84,12 +82,6 @@ class Blockchain {
         this.chain = newChain;
         await db.saveChain(this.chain);
         console.log('Replaced chain and saved it to DB.');
-        console.log(`Last block: ${newChain[newChain.length - 1].index}`);
-        if(bidManager) {
-            bidManager.handleRound(newChain[newChain.length - 1].index + 1);
-        } else {
-            console.warn("⚠️ No bidManager provided to update round.");
-        }
         
     }
 

@@ -20,15 +20,14 @@ class ChainUtil {
   static verifySignature(publicKey, signature, dataHash) {
     console.log(`Verifying signature for dataHash: ${dataHash} with publicKey: ${publicKey}`);
     const isVerified = ec.keyFromPublic(publicKey, "hex").verify(dataHash, signature);
-    console.log(`Signature verified: ${isVerified}`);
+    console.log(`✅ Signature verified: ${isVerified}`);
     return isVerified;
   }
 
-  static createHash(data) {
-    console.log(`Creating hash for data: ${data}`);
-    const hash = crypto.createHash('sha256').update(data).digest('hex');
-    console.log(`Generated hash: ${hash}`);
-    return hash;
+ static createHash(data) {
+  const dataString = typeof data === 'string' ? data : JSON.stringify(data);
+  const hash = crypto.createHash('sha256').update(dataString).digest('hex');
+  return hash;
   }
 }
 
