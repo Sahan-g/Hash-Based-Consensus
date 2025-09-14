@@ -8,15 +8,20 @@ describe("Block", () => {
   beforeEach(() => {
     wallet = {
       publicKey: "fake-public-key",
-      sign: jest.fn((data) => "fake-signature"), //return string('fake-signature') for testing
+      sign: jest.fn(() => ({
+        r: "fake-r",
+        s: "fake-s",
+        recoveryParam: 1,
+      })),
     };
   });
 
   //Test the constructor
   describe("constructor", () => {
     it("should set properties correctly", () => {
+      // const timestamp =
       const blockData = {
-        index: 1,
+        index: 2,
         timestamp: 123456,
         transactions: [],
         previousHash: "abc123",
@@ -32,7 +37,11 @@ describe("Block", () => {
       expect(block.transactions).toBe(blockData.transactions);
       expect(block.previousHash).toBe(blockData.previousHash);
       expect(block.proposerPublicKey).toBe(block.proposerPublicKey);
-      expect(block.signature).toBe("fake-signature");
+      expect(block.signature).toEqual({
+        r: "fake-r",
+        s: "fake-s",
+        recoveryParam: 1,
+      });
       expect(block.hash).toBeDefined(); //check block.hash has a value or undefined
     });
   });
@@ -40,7 +49,7 @@ describe("Block", () => {
   describe("computeHash", () => {
     it("compute hash correctly", () => {
       const blockData = {
-        index: 1,
+        index: 2,
         timestamp: 123456,
         transactions: [],
         previousHash: "abc123",
@@ -55,7 +64,6 @@ describe("Block", () => {
         JSON.stringify(blockData.transactions) +
         blockData.previousHash;
       const expectedHash = ChainUtil.createHash(testBlockString);
-      // print("Type ps : ", typeof(block.computeHash))
       expect(block.computeHash()).toBe(expectedHash);
     });
   });
@@ -68,9 +76,17 @@ describe("Block", () => {
       expect(genesisBlock.transactions).toEqual([]);
       expect(genesisBlock.previousHash).toBe("0");
       expect(genesisBlock.proposerPublicKey).toBe("GENESIS");
-      expect(genesisBlock.hash).toBe(
-        "0000ed9e07bf3d957688ed7ac3b93aa78c24afaad55056818faab9f03be9aaec"
+      const expectedHash = ChainUtil.createHash(
+        genesisBlock.index +
+          JSON.stringify(genesisBlock.transactions) +
+          genesisBlock.previousHash
       );
+      expect(genesisBlock.hash).toBe(expectedHash);
+      expect(genesisBlock.signature).toEqual({
+        r: "fake-r",
+        s: "fake-s",
+        recoveryParam: 1,
+      });
     });
   });
 
@@ -81,8 +97,8 @@ describe("Block", () => {
   describe("verify block", () => {
     it("return true for valid block", () => {
       const block = new Block({
-        index: 1,
-        timestamp: Date.now(),
+        index: 2,
+        timestamp: 12345,
         transactions: [],
         previousHash: "abc123",
         proposerPublicKey: wallet.publicKey,
@@ -188,13 +204,21 @@ describe("Block", () => {
         previousHash: "abc123",
         proposerPublicKey: wallet.publicKey,
         hash: "some-hash",
-        signature: "some-signature",
+        signature: {
+          r: "fake-r",
+          s: "fake-s",
+          recoveryParam: 1,
+        },
       };
 
       const block = Block.fromObject(obj);
       expect(block).toBeInstanceOf(Block);
       expect(block.hash).toBe("some-hash");
-      expect(block.signature).toBe("some-signature");
+      expect(block.signature).toEqual({
+        r: "fake-r",
+        s: "fake-s",
+        recoveryParam: 1,
+      });
     });
   });
 });

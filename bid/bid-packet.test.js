@@ -6,7 +6,11 @@ let wallet;
 beforeEach(() => {
   wallet = {
     publicKey: "fake-public-key",
-    sign: jest.fn().mockReturnValue("fake-signature"),
+    sign: jest.fn(() => ({
+      r: "fake-r",
+      s: "fake-s",
+      recoveryParam: 1,
+    })),
   };
 
   ChainUtil.createHash = jest.fn((data) => `hash-${data}`);
@@ -32,7 +36,11 @@ describe("Bid-Packet", () => {
       const expectedData = `${testBidData.publicKey}-${testBidData.round}-${testBidData.bidHash}-${testBidData.timestamp}`;
       expect(ChainUtil.createHash).toHaveBeenCalledWith(expectedData);
       expect(wallet.sign).toHaveBeenCalledWith(`hash-${expectedData}`);
-      expect(bidPacket.signature).toBe("fake-signature");
+      expect(bidPacket.signature).toEqual({
+        r: "fake-r",
+        s: "fake-s",
+        recoveryParam: 1,
+      });
     });
 
     it("should use Date.now() is timestamp is not proviced", () => {
