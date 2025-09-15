@@ -1,0 +1,18 @@
+services:
+  node-01:
+    image: hash-consensus:1.0.0
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+      - "5001:5001"
+    environment:
+      PORT: "3001"
+      P2P_PORT: "5001"
+      P2P_HOST: "node01.example.com"
+      BOOTSTRAP_ADDRESS: "https://bootstrap.yourdomain.com"
+      DB_PATH: "/data/chaindata"
+    volumes:
+      - node01-data:/data
+
+volumes:
+  node01-data:
