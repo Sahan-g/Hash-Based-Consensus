@@ -85,6 +85,11 @@ class Blockchain {
         
     }
 
+    removeLastBlock() {
+        if(this.chain.length > 1) {
+            this.chain.pop();
+        }
+    }
 
 }
 
