@@ -8,62 +8,46 @@ class LuckConsensus {
 
     verifyAndEvaluateProposal(proposal) {
         if (!proposal || !proposal.luckProof || !proposal.block) {
-            return {
-                accepted: false,
-                reason: "Malformed proposal",
-            };
+            console.log("❌ Malformed proposal");
+            return;
         }
 
         const {seed, round, publicKey, signature, luck} = proposal.luckProof;
 
         if (this.p2pServer.wallet.publicKey === publicKey) {
-            return {
-                accepted: true,
-                reason: "Own proposal, auto-accepted",
-            };
+            console.log("✅ Own proposal, auto-accepted");
+            return;
         }
 
         const res = Luck.verifyLuck(seed, round, publicKey, signature);
         if (!res || !res.valid) {
-            return {
-                accepted: false,
-                reason: "Invalid luck proof signature",
-            };
+            console.log("❌ Invalid luck proof signature");
+            return;
         }
 
         const incomingLuck = res.luck;
 
         if (luck !== incomingLuck) {
-            return {
-                accepted: false,
-                reason: "Luck value mismatch",
-            };
+            console.log("❌ Luck value mismatch");
+            return;
         }
 
         const lastBlock = this.blockchain.getLastBlock();
 
         if (round === lastBlock.index + 1) {
             this.blockchain.addBlockToChain(proposal.block);
-            return { 
-                accepted: true, 
-                reason: 'no existing block for round', 
-                luck: incomingLuck 
-            };
+            console.log("✅ New block added to the chain");
+            return;
         } else if (round === lastBlock.index) {
             if (lastBlock.luckProof.luck < incomingLuck) {
                 this.blockchain.removeLastBlock();
                 this.blockchain.addBlockToChain(proposal.block);
-                return { 
-                    accepted: true, 
-                    reason: 'Replaced existing block with higher luck', 
-                    luck: incomingLuck 
-                };
+                console.log("🔄 Replaced block with higher luck proposal");
+                return;
             }
         } else {
-            return {
-                accepted: false,
-                reason: "Proposal round is outdated",
-            };
+            console.log("❌ Outdated proposal round");
+            return;
         }
     }
 }
