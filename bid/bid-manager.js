@@ -57,10 +57,11 @@ class BidManager {
     const roundBids = this.bidList.get(round);
     const closestBid = this.getClosestBid(blockHash, roundBids);
     return closestBid ? closestBid.publicKey : null;
-  } // 
+  } //
 
   getAllBids(round) {
-    return this.bidList || [];
+    // return this.bidList || [];
+    return this.bidList.get(round) || [];
   }
 
   clearRound(round) {
