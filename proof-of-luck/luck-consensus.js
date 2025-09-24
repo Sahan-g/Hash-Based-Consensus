@@ -16,6 +16,13 @@ class LuckConsensus {
 
         const {seed, round, publicKey, signature, luck} = proposal.luckProof;
 
+        if (this.p2pServer.wallet.publicKey === publicKey) {
+            return {
+                accepted: true,
+                reason: "Own proposal, auto-accepted",
+            };
+        }
+
         const res = Luck.verifyLuck(seed, round, publicKey, signature);
         if (!res || !res.valid) {
             return {
