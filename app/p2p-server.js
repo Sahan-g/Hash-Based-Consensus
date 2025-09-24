@@ -19,15 +19,17 @@ const MESSAGE_TYPES = {
     block: 'BLOCK',
     round: 'ROUND',
     bid: 'BID',
+    proposal: 'PROPOSAL',
 };
 
 class P2PServer {
-    constructor(blockchain, transactionPool,bidManager, wallet) {
+    constructor(blockchain, transactionPool,bidManager, wallet, luckConsensus) {
         this.blockchain = blockchain;
         this.transactionPool = transactionPool;
         this.sockets = [];
         this.bidManager = bidManager;
         this.wallet= wallet;
+        this.luckConsensus = luckConsensus;
     }
 
     async listen() {
@@ -131,6 +133,10 @@ class P2PServer {
                     console.log(`📥 Bid received - ${JSON.stringify(data.bid.bidHash)} at p2p-server`);
                     this.bidManager.receiveBid(data.bid);
                     break;
+                case MESSAGE_TYPES.proposal:
+                    console.log(`📥 Proposal received for round ${data.proposal.round} at p2p-server`);
+                    this.luckConsensus.verifyAndEvaluateProposal(data.proposal);    
+                    break;
                 default:
                     console.error(`Unknown message type: ${data.type}`);
 
@@ -189,6 +195,14 @@ class P2PServer {
             return;
        }
        console.log(`⛔ Not the proposer for this round. Proposer is ${proposerPublicKey}`);
+    }
+
+    broadcastProposal(proposal) {
+        console.log("✅ Broadcasting proposal for round ", proposal.round);
+        this.sockets.forEach(socket => {
+            socket.send(JSON.stringify({ type: MESSAGE_TYPES.proposal, proposal }));
+            console.log(`✅ Sent proposal for round ${proposal.round} to peer ${socket.url}`);
+        });
     }
 
     sendRound(socket, round) {
