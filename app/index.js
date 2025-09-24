@@ -94,7 +94,13 @@ const startServer = async () => {
   app.post("/broadcast-proposal", (req, res) => {
     const { proposal } = req.body;
     p2pServer.broadcastProposal(proposal);
-    res.status(200).json({ status: "Proposal broadcasted" });
+    res.status(200).json({ status: "Submitted for broadcasting" });
+  });
+
+  app.post("/verify-proposal", (req, res) => {
+    const { proposal } = req.body;
+    luckConsensus.verifyAndEvaluateProposal(proposal);
+    res.status(200).json({ status: "Submitted for verification" });
   });
 
   app.listen(PORT, () => {
