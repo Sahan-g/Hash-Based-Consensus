@@ -20,13 +20,11 @@ class LuckNode {
     });
 
     const luckProof = Luck.generateLuck(this.wallet, blockCandidate.index + 1);
+    blockCandidate.luckProof = luckProof;
 
     const proposal = {
       block: blockCandidate,
-      luckProof,
-      proposer: this.wallet.publicKey,
       round: blockCandidate.index + 1,
-      timestamp: Date.now(),
     };
 
     return proposal;

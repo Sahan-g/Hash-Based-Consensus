@@ -10,6 +10,7 @@ class Block {
     hash,
     signature,
     wallet,
+    luckProof,
   }) {
     this.index = index;
     this.timestamp = timestamp || Date.now();
@@ -18,6 +19,7 @@ class Block {
     this.proposerPublicKey = proposerPublicKey;
     this.hash = hash ? hash : this.computeHash();
     this.signature = signature ? signature : wallet.sign(this.hash);
+    this.luckProof = luckProof || null;
   }
 
   computeHash() {
