@@ -91,6 +91,12 @@ const startServer = async () => {
     }
   });
 
+  app.post("/broadcast-proposal", (req, res) => {
+    const { proposal } = req.body;
+    p2pServer.broadcastProposal(proposal);
+    res.status(200).json({ status: "Proposal broadcasted" });
+  });
+
   app.listen(PORT, () => {
     console.log(`\nServer is running on port ${PORT}`);
   });
