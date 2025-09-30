@@ -113,6 +113,7 @@ class P2PServer {
                     this.blockchain.replaceChain(data.chain, this.bidManager);
                     break;
                 case MESSAGE_TYPES.transaction:
+                    console.log(`📥 Transaction received with sensor-id-${JSON.stringify(data.transaction.sensor_id)} at p2p-server`);
                     this.transactionPool.updateOrAddTransaction(data.transaction);
                     break;
                 // case MESSAGE_TYPES.clear_transactions: will not be using this 
