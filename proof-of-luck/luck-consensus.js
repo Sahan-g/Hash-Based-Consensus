@@ -33,12 +33,14 @@ class LuckConsensus {
     }
 
     const lastBlock = this.blockchain.getLastBlock();
+    // lastBlock.index =0
+    // lastBlock.round =1
 
-    if (round === lastBlock.index + 1) {
+    if (round === lastBlock.index + 2) {
       this.blockchain.addBlockToChain(proposal.block);
       console.log("✅ New block added to the chain");
       return;
-    } else if (round === lastBlock.index) {
+    } else if (round === lastBlock.index + 1) {
       if (lastBlock.luckProof.luck < incomingLuck) {
         this.blockchain.removeLastBlock();
         this.blockchain.addBlockToChain(proposal.block);
@@ -46,6 +48,7 @@ class LuckConsensus {
         return;
       }
     } else {
+      console.log("round", round, "last index : ", lastBlock.index);
       console.log("❌ Outdated proposal round");
       return;
     }
