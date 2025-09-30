@@ -1,7 +1,7 @@
 const Transaction = require("./transaction");
 const Block = require("../blockchain/block");
 
-const {ROUND_INTERVAL} = require("../config");
+const {ROUND_INTERVAL, TRANSACTION_COLLECTION_DURATION} = require("../config");
 
 class TransactionPool {
   constructor() {
@@ -57,7 +57,7 @@ class TransactionPool {
   }
 
 removeConfirmedTransactions(confirmedTransactions) {
-  console.log(confirmedTransactions);
+  console.log("✅ Confirmed Transactions", confirmedTransactions);
 
   if (!Array.isArray(confirmedTransactions)) {
     console.warn("⚠️ confirmedTransactions is not a valid array:", confirmedTransactions);
@@ -74,7 +74,7 @@ removeConfirmedTransactions(confirmedTransactions) {
     const allTxns = transactionPool.transactions;
     console.log("all tx:", this.transactions)
     const roundStart = Block.genesis(wallet).timestamp + round * ROUND_INTERVAL;
-    const roundEndLimit = roundStart + 8 * 60 * 1000; // 8-minute mark
+    const roundEndLimit = roundStart + TRANSACTION_COLLECTION_DURATION; // 8-minute mark
 
     // Filter and sort
     const filteredTxns = allTxns

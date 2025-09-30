@@ -27,7 +27,6 @@ class Transaction {
 
   static fromSensorReading(senderWallet, { sensor_id, reading, metadata }) {
     const tx = new this(sensor_id, reading, metadata);
-    console.log(tx)
     return this.signTransaction(tx, senderWallet);
   }
 
