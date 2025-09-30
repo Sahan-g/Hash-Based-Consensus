@@ -208,7 +208,7 @@ const startServer = async () => {
     const delay = getNextAlignedDelay(ROUND_INTERVAL); //20 seconds
     console.log(`⏱ First round starts in ${delay / 1000}s`);
 
-    let round = blockchain.getLastBlock().luckProof?.round || 0;
+    let round = blockchain.getLastBlock().luckProof?.round + 1 || 1;
 
     setTimeout(() => {
       runPoLRound(++round); //run first round immediately
@@ -223,6 +223,8 @@ const startServer = async () => {
 
     const proposal = luckNode.createProposalWithLuck(round);
     p2pServer.lastGeneratedProposal = proposal;
+
+    tp.removeConfirmedTransactions(proposal.block.transactions);
 
     console.log(
       `Round ${round}: generated proposal luck=${proposal.block.luckProof.luck.toFixed(
