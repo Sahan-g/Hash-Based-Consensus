@@ -38,7 +38,7 @@ class P2PServer {
 
     // Broadcast scheduling parameters
     this.NUM_SLOTS = 10; // number of slots per round
-    this.SLOT_MS = 50; // each slot = 50ms → max 5s wait
+    this.SLOT_MS = 50; // each slot = 50ms → max 500, 0.5s to wait
   }
 
   async listen() {

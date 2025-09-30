@@ -14,12 +14,17 @@ const {
   ROUND_INTERVAL,
   PHASE_1_DURATION,
   PHASE_3_START,
+  CONSENSUS_TYPE,
 } = require("../config");
 const PORT = process.env.PORT || 3001;
 
 const app = express();
 
 const startServer = async () => {
+  let consensusType = CONSENSUS_TYPE;
+
+  console.log(`🗳 Selected consensus: ${consensusType}`);
+
   app.use(bodyParser.json());
 
   const wallet = await Wallet.loadOrCreate();
@@ -37,7 +42,7 @@ const startServer = async () => {
   );
   luckConsensus.p2pServer = p2pServer;
 
-  const luckNode = new LuckNode(blockchain, wallet, p2pServer);
+  const luckNode = new LuckNode(blockchain, wallet, p2pServer, tp);
 
   // const p2pServer = new P2PServer(blockchain, tp, bidManager);
 
@@ -105,18 +110,6 @@ const startServer = async () => {
     }
   });
 
-  app.post("/broadcast-proposal", (req, res) => {
-    const { proposal } = req.body;
-    p2pServer.broadcastProposal(proposal);
-    res.status(200).json({ status: "Submitted for broadcasting" });
-  });
-
-  app.post("/verify-proposal", (req, res) => {
-    const { proposal } = req.body;
-    luckConsensus.verifyAndEvaluateProposal(proposal);
-    res.status(200).json({ status: "Submitted for verification" });
-  });
-
   app.listen(PORT, () => {
     console.log(`\nServer is running on port ${PORT}`);
   });
@@ -124,6 +117,16 @@ const startServer = async () => {
   p2pServer.listen();
 
   p2pServer.syncChains();
+
+  if (consensusType == "luck") {
+    startPoLRoundScheduler();
+  } else if (consensusType == "bid") {
+    startRoundScheduler();
+  } else {
+    throw new Error(
+      "Invalid consensus type. Use --consensus=luck or --consensus=bid"
+    );
+  }
 
   /**
    * Utility: get aligned time offset for round loop
@@ -133,76 +136,74 @@ const startServer = async () => {
     return intervalMs - (now % intervalMs);
   }
 
-  // /**
-  //  * Phase 1: publish random number
-  //  */
-  // function phase1() {
-  //   bidManager.round += 1;
-  //   const bidPacket = bidManager.generateBid(bidManager.round, wallet);
-  //   p2pServer.broadcastBid(bidPacket);
-  //   console.log(`This is Round: ${bidPacket.round}`);
-  // }
+  /**
+   * Phase 1: publish random number
+   */
+  function phase1() {
+    bidManager.round += 1;
+    const bidPacket = bidManager.generateBid(bidManager.round, wallet);
+    p2pServer.broadcastBid(bidPacket);
+    console.log(`This is Round: ${bidPacket.round}`);
+  }
 
-  // /**
-  //  * Phase 2: intermediate phase (2–9 min)
-  //  */
-  // function phase2() {
-  //   console.log(`[${new Date().toISOString()}] Phase 2: Waiting for leader...`);
-  //   // Collect random numbers, do nothing
-  // }
+  /**
+   * Phase 2: intermediate phase (2–9 min)
+   */
+  function phase2() {
+    console.log(`[${new Date().toISOString()}] Phase 2: Waiting for leader...`);
+    // Collect random numbers, do nothing
+  }
 
-  // /**
-  //  * Phase 3: block proposal
-  //  */
-  // async function phase3() {
-  //   p2pServer.broadcastBlock(bidManager.round, wallet);
-  // }
+  /**
+   * Phase 3: block proposal
+   */
+  async function phase3() {
+    p2pServer.broadcastBlock(bidManager.round, wallet);
+  }
 
-  // /**
-  //  * Start a round-aligned loop
-  //  */
-  // function startRoundScheduler() {
-  //   console.log(`\n🕣 Time now: ${new Date().toISOString()}`)
-  //   const delay = getNextAlignedDelay(ROUND_INTERVAL);
-  //   console.log(`⏱ First round starts in ${delay / 1000}s`);
-
-  //   setTimeout(() => {
-  //     runRound(); // first round
-  //     setInterval(runRound, ROUND_INTERVAL); // repeat
-  //   }, delay);
-  // }
-
-  // /**
-  //  * One full 10-minute round
-  //  */
-  // function runRound() {
-  //   console.log(`\n🌐 Starting new round at ${new Date().toISOString()}\n`);
-  //   phase1(); // Immediately run phase 1
-  //   console.log(
-  //     `🌐 Bid generation and broadcasting done at ${new Date().toISOString()}`
-  //   );
-
-  //   // Phase 2 starts after 2 minutes
-  //   setTimeout(() => {
-  //     console.log(
-  //       `📜 Collected ${
-  //         bidManager.bidList.get(bidManager.round).length
-  //       } bids so far for round ${bidManager.round}`
-  //     );
-  //     console.log(`\n🌐 Phase 2 starting at ${new Date().toISOString()}\n`);
-  //     phase2();
-  //   }, PHASE_1_DURATION);
-
-  //   // Phase 3 starts at 9-minute mark
-  //   setTimeout(() => {
-  //     console.log(`\n🌐 Phase 3 starting at ${new Date().toISOString()}\n`);
-  //     phase3();
-  //   }, PHASE_3_START);
-  // }
-
-  // startRoundScheduler();
-
+  /**
+   * Start a round-aligned loop
+   */
   function startRoundScheduler() {
+    console.log(`\n🕣 Time now: ${new Date().toISOString()}`);
+    const delay = getNextAlignedDelay(ROUND_INTERVAL);
+    console.log(`⏱ First round starts in ${delay / 1000}s`);
+
+    setTimeout(() => {
+      runRound(); // first round
+      setInterval(runRound, ROUND_INTERVAL); // repeat
+    }, delay);
+  }
+
+  /**
+   * One full 10-minute round
+   */
+  function runRound() {
+    console.log(`\n🌐 Starting new round at ${new Date().toISOString()}\n`);
+    phase1(); // Immediately run phase 1
+    console.log(
+      `🌐 Bid generation and broadcasting done at ${new Date().toISOString()}`
+    );
+
+    // Phase 2 starts after 2 minutes
+    setTimeout(() => {
+      console.log(
+        `📜 Collected ${
+          bidManager.bidList.get(bidManager.round).length
+        } bids so far for round ${bidManager.round}`
+      );
+      console.log(`\n🌐 Phase 2 starting at ${new Date().toISOString()}\n`);
+      phase2();
+    }, PHASE_1_DURATION);
+
+    // Phase 3 starts at 9-minute mark
+    setTimeout(() => {
+      console.log(`\n🌐 Phase 3 starting at ${new Date().toISOString()}\n`);
+      phase3();
+    }, PHASE_3_START);
+  }
+
+  function startPoLRoundScheduler() {
     console.log(`\n🕣 Current time: ${new Date().toISOString()}`);
     const delay = getNextAlignedDelay(ROUND_INTERVAL); //20 seconds
     console.log(`⏱ First round starts in ${delay / 1000}s`);
@@ -210,12 +211,12 @@ const startServer = async () => {
     let round = blockchain.getLastBlock().luckProof?.round || 0;
 
     setTimeout(() => {
-      runRound(++round);
-      setInterval(() => runRound(++round), ROUND_INTERVAL);
-    }, delay);
+      runPoLRound(++round); //run first round immediately
+      setInterval(() => runPoLRound(++round), ROUND_INTERVAL); //  it runs this in every 20 seconds
+    }, delay); //waits delay ms
   }
 
-  function runRound(round) {
+  function runPoLRound(round) {
     console.log(
       `\n🌐 New round ${round} started at ${new Date().toISOString()}`
     );
@@ -231,8 +232,6 @@ const startServer = async () => {
 
     p2pServer.scheduleProposalBroadcast(proposal);
   }
-
-  startRoundScheduler();
 };
 
 startServer();
