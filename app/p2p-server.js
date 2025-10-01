@@ -13,6 +13,8 @@ const {
 const Block = require("../blockchain/block");
 const BidManager = require("../bid/bid-manager.js");
 
+const {NUM_SLOTS, SLOT_MS} = require("../config");
+
 // const peers = process.env.PEERS ? process.env.PEERS.split(',') : [];
 let peers = [];
 
@@ -35,10 +37,6 @@ class P2PServer {
     this.wallet = wallet;
     this.luckConsensus = luckConsensus;
     this.lastGeneratedProposal = null;
-
-    // Broadcast scheduling parameters
-    this.NUM_SLOTS = 10; // number of slots per round
-    this.SLOT_MS = 50; // each slot = 50ms → max 500, 0.5s to wait
   }
 
   async listen() {
@@ -161,7 +159,7 @@ class P2PServer {
           );
           // this.luckConsensus.verifyAndEvaluateProposal(data.proposal);
           if (this.luckConsensus) {
-            this.luckConsensus.verifyAndEvaluateProposal(data.proposal);
+            this.luckConsensus.verifyAndEvaluateAndAddProposal(data.proposal);
           }
           break;
         default:
@@ -260,12 +258,12 @@ class P2PServer {
     let luck = proposal.block.luckProof.luck;
     if (typeof luck !== "number" || Number.isNaN(luck)) luck = 0;
 
-    let slotIndex = Math.floor((1 - luck) * this.NUM_SLOTS);
+    let slotIndex = Math.floor((1 - luck) * NUM_SLOTS);
     if (slotIndex < 0) slotIndex = 0;
-    if (slotIndex >= this.NUM_SLOTS) slotIndex = this.NUM_SLOTS - 1;
+    if (slotIndex >= NUM_SLOTS) slotIndex = NUM_SLOTS - 1;
 
-    const slotStart = slotIndex * this.SLOT_MS;
-    const jitter = Math.floor(Math.random() * this.SLOT_MS);
+    const slotStart = slotIndex * SLOT_MS;
+    const jitter = Math.floor(Math.random() * SLOT_MS);
     const waitMs = slotStart + jitter;
 
     console.log(
@@ -275,17 +273,21 @@ class P2PServer {
         waitMs / 1000
       ).toFixed(3)}s)`
     );
+    console.log("🕒 Slot starts at: ", Date.now() + slotStart, "ms");
 
     setTimeout(() => {
-      console.log(
-        `📣 Broadcasting proposal (round ${proposal.round}) from slot ${slotIndex}`
-      );
-      this.broadcastProposal(proposal);
-
-      // locally apply (verify & evaluate) our own proposal as it is broadcast
-      if (this.luckConsensus) {
-        this.luckConsensus.verifyAndEvaluateProposal(proposal);
-      }
+      if ((this.blockchain.getLastBlock().index + 2 === proposal.round) || (this.blockchain.getLastBlock().index + 1 === proposal.round && this.blockchain.getLastBlock().luckProof.luck < proposal.block.luckProof.luck)) {
+        // locally apply (verify & evaluate) our own proposal as it is broadcast
+        if (this.luckConsensus) {
+          this.luckConsensus.verifyAndEvaluateAndAddProposal(proposal);
+        }
+        console.log(
+          `📣 Broadcasting proposal (round ${proposal.round}) from slot ${slotIndex}`
+        );
+        this.broadcastProposal(proposal);
+      } else {
+        console.log(`⛔ Not broadcasting proposal for round ${proposal.round} as there's already a proposal with higher luck value`);
+      }  
     }, waitMs);
   }
 
