@@ -202,7 +202,7 @@ class P2PServer {
   }
 
   broadcastBlock(round, wallet) {
-    console.log("hit");
+    // console.log("hit");
     console.log(this.transactionPool);
     const transactions = this.transactionPool.getTransactionsForRound(
       this.transactionPool,

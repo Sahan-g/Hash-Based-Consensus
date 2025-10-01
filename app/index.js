@@ -11,12 +11,12 @@ const LuckNode = require("../proof-of-luck/luck-node");
 const LuckConsensus = require("../proof-of-luck/luck-consensus");
 
 const ENABLE_SENSOR_SIM = process.env.ENABLE_SENSOR_SIM || false;
+const CONSENSUS_TYPE = process.env.CONSENSUS_TYPE || "bid";
 
 const {
   ROUND_INTERVAL,
   PHASE_1_DURATION,
   PHASE_3_START,
-  CONSENSUS_TYPE,
   PROPOSAL_SCHEDULE_DELAY,
 } = require("../config");
 const PORT = process.env.PORT || 3001;
@@ -205,25 +205,6 @@ const startServer = async () => {
       phase3();
     }, PHASE_3_START);
   }
-
-  function generateAndSendSensorData() {
-    sensor_id = "sensor-" + Math.floor(Math.random() * 1000);
-    reading = {
-        value: parseFloat((Math.random() * 100).toFixed(2))
-    };
-    metadata = {
-        timestamp: new Date().toISOString(),
-        unit: "Celsius"
-    };
-
-    const tx = wallet.createTransaction(sensor_id, reading, tp, metadata);
-    p2pServer.transactionPool.updateOrAddTransaction(tx)
-    p2pServer.broadcastTransaction(tx);
-    console.log("✨: Generated and broadcasted sensor data related to sensor-id: ", sensor_id);
-  }
-
-  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 5000) : console.log("❌ Sensor data simulation disabled");
-
 
   function generateAndSendSensorData() {
     sensor_id = "sensor-" + Math.floor(Math.random() * 1000);
