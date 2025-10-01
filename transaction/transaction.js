@@ -38,6 +38,7 @@ class Transaction {
   // }
   static signTransaction(transaction, senderWallet) {
     const payload = transaction._signablePayload();
+    transaction.hash = ChainUtil.createHash(payload);
     transaction.input = {
       timestamp: Date.now(),
       address: senderWallet.publicKey,

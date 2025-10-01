@@ -72,7 +72,7 @@ removeConfirmedTransactions(confirmedTransactions) {
 
    getTransactionsForRound(transactionPool,wallet,round) {
     const allTxns = transactionPool.transactions;
-    console.log("all tx:", this.transactions)
+    // console.log("all tx:", this.transactions)
     const roundStart = Block.genesis(wallet).timestamp + round * ROUND_INTERVAL;
     const roundEndLimit = roundStart + TRANSACTION_COLLECTION_DURATION; // 8-minute mark
 
