@@ -6,7 +6,7 @@ class LuckConsensus {
     this.p2pServer = p2pServer;
   }
 
-  verifyAndEvaluateProposal(proposal) {
+  verifyAndEvaluateAndAddProposal(proposal) {
     if (!proposal || !proposal.block.luckProof || !proposal.block) {
       console.log("❌ Malformed proposal");
       return;

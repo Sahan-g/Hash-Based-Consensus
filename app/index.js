@@ -15,6 +15,7 @@ const {
   PHASE_1_DURATION,
   PHASE_3_START,
   CONSENSUS_TYPE,
+  PROPOSAL_SCHEDULE_DELAY,
 } = require("../config");
 const PORT = process.env.PORT || 3001;
 
@@ -217,6 +218,7 @@ const startServer = async () => {
   }
 
   function runPoLRound(round) {
+    const roundStart = Date.now();
     console.log(
       `\n🌐 New round ${round} started at ${new Date().toISOString()}`
     );
@@ -232,7 +234,11 @@ const startServer = async () => {
       )}`
     );
 
-    p2pServer.scheduleProposalBroadcast(proposal);
+    const delay = Math.max(0, roundStart + PROPOSAL_SCHEDULE_DELAY - Date.now());
+
+    setTimeout(() =>
+      p2pServer.scheduleProposalBroadcast(proposal),   
+    delay);
   }
 };
 
