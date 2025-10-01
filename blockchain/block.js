@@ -92,6 +92,7 @@ class Block {
       proposerPublicKey,
       hash,
       signature,
+      luckProof,
     } = obj;
     return new this({
       index,
@@ -101,6 +102,7 @@ class Block {
       proposerPublicKey,
       hash,
       signature,
+      luckProof,
     });
   }
 }

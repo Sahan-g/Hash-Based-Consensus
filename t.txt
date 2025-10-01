@@ -141,3 +141,16 @@
   // };
 
   // scheduleNextBlock();
+
+
+    app.post("/broadcast-proposal", (req, res) => {
+    const { proposal } = req.body;
+    p2pServer.broadcastProposal(proposal);
+    res.status(200).json({ status: "Submitted for broadcasting" });
+  });
+
+  app.post("/verify-proposal", (req, res) => {
+    const { proposal } = req.body;
+    luckConsensus.verifyAndEvaluateAndAddProposal(proposal);
+    res.status(200).json({ status: "Submitted for verification" });
+  });
