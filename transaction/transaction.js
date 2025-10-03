@@ -55,8 +55,8 @@ class Transaction {
       reading: transaction.reading,
       metadata: transaction.metadata,
     });
-    console.log(expectedHash)
-    console.log(transaction.hash)
+    // console.log(expectedHash)
+    // console.log(transaction.hash)
     if (expectedHash !== transaction.hash) return false;
 
     return ChainUtil.verifySignature(

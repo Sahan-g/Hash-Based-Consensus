@@ -217,12 +217,11 @@ const startServer = async () => {
     };
 
     const tx = wallet.createTransaction(sensor_id, reading, tp, metadata);
-    p2pServer.transactionPool.updateOrAddTransaction(tx)
     p2pServer.broadcastTransaction(tx);
     console.log("✨: Generated and broadcasted sensor data related to sensor-id: ", sensor_id);
   }
 
-  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 5000) : console.log("❌ Sensor data simulation disabled");
+  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 10000) : console.log("❌ Sensor data simulation disabled");
 
 
   function startPoLRoundScheduler() {
