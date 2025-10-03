@@ -9,14 +9,21 @@ class TransactionPool {
   }
 
   updateOrAddTransaction(transaction) {
+    const validatedAndVerified = this.validateAndVerifyTransactions(transaction);
+    if (!validatedAndVerified) {
+      console.error("❌ Transaction validation or verification failed. Transaction not added.");
+      return;
+    }
     let transactionWithId = this.transactions.find(
       (t) => t.id === transaction.id
     );
     if (transactionWithId) {
       this.transactions[this.transactions.indexOf(transactionWithId)] =
         transaction;
+      console.log("🔄 Transaction updated in the pool.");
     } else {
       this.transactions.push(transaction);
+      console.log("🆕 New transaction added to the pool.");
     }
   }
 
@@ -34,43 +41,40 @@ class TransactionPool {
     );
   }
 
-  validTransactions() {
-    return this.transactions.filter((transaction) => {
-      const outputTotal = transaction.outputs.reduce((total, output) => {
-        return total + output.amount;
-      }, 0);
+  validateAndVerifyTransactions(transaction) {
+      if (!transaction.id || !transaction.sensor_id || !transaction.timestamp || !transaction.hash || !transaction.input || !transaction.input.address || !transaction.input.signature || !transaction.input.timestamp) {
+        console.error(`Invalid transaction: missing fields`, transaction);
+        return false;
+      }
 
-      if (transaction.input.amount !== outputTotal) {
-        console.error(
-          `Invalid transaction from ${transaction.input.address}. Output total ${outputTotal} does not match input amount ${transaction.input.amount}`
-        );
-        return;
+      if (transaction.reading === undefined || transaction.metadata === undefined) {
+        console.error(`Invalid transaction: missing reading or metadata`, transaction);
+        return false;
       }
 
       if (!Transaction.verifyTransaction(transaction)) {
         console.error(`Invalid signature from ${transaction.input.address}`);
-        return;
+        return false;
       }
 
-      return transaction;
-    });
+      return true;
   }
 
-removeConfirmedTransactions(confirmedTransactions) {
-  console.log("✅ Confirmed Transactions", confirmedTransactions);
+  removeConfirmedTransactions(confirmedTransactions) {
+    // console.log("✅ Confirmed Transactions", confirmedTransactions);
 
-  if (!Array.isArray(confirmedTransactions)) {
-    console.warn("⚠️ confirmedTransactions is not a valid array:", confirmedTransactions);
-    return;
+    if (!Array.isArray(confirmedTransactions)) {
+      console.warn("⚠️ confirmedTransactions is not a valid array:", confirmedTransactions);
+      return;
+    }
+
+    this.transactions = this.transactions.filter(
+      (t) => !confirmedTransactions.find((ct) => ct.id === t.id)
+    );
   }
 
-  this.transactions = this.transactions.filter(
-    (t) => !confirmedTransactions.find((ct) => ct.id === t.id)
-  );
-}
 
-
-   getTransactionsForRound(transactionPool,wallet,round) {
+  getTransactionsForRound(transactionPool,wallet,round) {
     const allTxns = transactionPool.transactions;
     // console.log("all tx:", this.transactions)
     const roundStart = Block.genesis(wallet).timestamp + round * ROUND_INTERVAL;
