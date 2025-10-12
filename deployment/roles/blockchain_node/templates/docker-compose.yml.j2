@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  {{ inventory_hostname }}:
+    image: {{ docker_image }}
+    container_name: {{ inventory_hostname }}
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+      - "5001:5001"
+    environment:
+      PORT: "3001"
+      P2P_PORT: "5001"
+      P2P_HOST: "{{ ansible_host }}"
+      BOOTSTRAP_ADDRESS: "{{ bootstrap_address }}"
+      DB_PATH: "/data/chaindata"
+    volumes:
+      - {{ inventory_hostname }}-data:/data
+
+volumes:
+  {{ inventory_hostname }}-data:
