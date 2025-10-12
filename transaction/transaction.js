@@ -27,7 +27,6 @@ class Transaction {
 
   static fromSensorReading(senderWallet, { sensor_id, reading, metadata }) {
     const tx = new this(sensor_id, reading, metadata);
-    console.log(tx)
     return this.signTransaction(tx, senderWallet);
   }
 
@@ -39,6 +38,7 @@ class Transaction {
   // }
   static signTransaction(transaction, senderWallet) {
     const payload = transaction._signablePayload();
+    transaction.hash = ChainUtil.createHash(payload);
     transaction.input = {
       timestamp: Date.now(),
       address: senderWallet.publicKey,
@@ -55,8 +55,8 @@ class Transaction {
       reading: transaction.reading,
       metadata: transaction.metadata,
     });
-    console.log(expectedHash)
-    console.log(transaction.hash)
+    // console.log(expectedHash)
+    // console.log(transaction.hash)
     if (expectedHash !== transaction.hash) return false;
 
     return ChainUtil.verifySignature(
