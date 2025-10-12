@@ -9,3 +9,6 @@ npm-debug.log
 coverage
 .tmp
 dist
+deployment/
+ansible.cfg
+inventory.ini
