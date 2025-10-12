@@ -7,24 +7,47 @@ const TransactionPool = require("../transaction/transaction-pool");
 const BidManager = require("../bid/bid-manager");
 const P2PServer = require("./p2p-server");
 const consensus = require("../bid/consensus");
+const LuckNode = require("../proof-of-luck/luck-node");
+const LuckConsensus = require("../proof-of-luck/luck-consensus");
+
+const ENABLE_SENSOR_SIM = process.env.ENABLE_SENSOR_SIM || false;
+const CONSENSUS_TYPE = process.env.CONSENSUS_TYPE || "bid";
 
 const {
   ROUND_INTERVAL,
   PHASE_1_DURATION,
   PHASE_3_START,
+  PROPOSAL_SCHEDULE_DELAY,
 } = require("../config");
 const PORT = process.env.PORT || 3001;
 
 const app = express();
 
 const startServer = async () => {
+  let consensusType = CONSENSUS_TYPE;
+
+  console.log(`🗳 Selected consensus: ${consensusType}`);
+
   app.use(bodyParser.json());
 
   const wallet = await Wallet.loadOrCreate();
   const blockchain = await Blockchain.create(wallet);
   const tp = new TransactionPool();
   const bidManager = new BidManager(wallet.publicKey, blockchain);
-  const p2pServer = new P2PServer(blockchain, tp, bidManager);
+
+  const luckConsensus = new LuckConsensus(blockchain, null);
+  const p2pServer = new P2PServer(
+    blockchain,
+    tp,
+    bidManager,
+    wallet,
+    luckConsensus
+  );
+  luckConsensus.p2pServer = p2pServer;
+
+  const luckNode = new LuckNode(blockchain, wallet, p2pServer, tp);
+
+  // const p2pServer = new P2PServer(blockchain, tp, bidManager);
 
   app.get("/blocks", (req, res) => {
     res.json(blockchain.chain);
@@ -34,16 +57,15 @@ const startServer = async () => {
     res.json(tp.transactions);
   });
 
-  app.get('/bids/:round', (req, res) => {
-      const { round } = req.params;
-      const bidList = bidManager.getAllBids(parseInt(round, 10));
-      if (bidList.length > 0) {
-          res.status(200).json(bidList);
-      }
-      else {
-          res.status(404).json({ message: 'No bids found for this round' });
-      }
-  })
+  app.get("/bids/:round", (req, res) => {
+    const { round } = req.params;
+    const bidList = bidManager.getAllBids(parseInt(round, 10));
+    if (bidList.length > 0) {
+      res.status(200).json(bidList);
+    } else {
+      res.status(404).json({ message: "No bids found for this round" });
+    }
+  });
 
   // app.post("/transact", (req, res) => {
   //   const { recipient, amount } = req.body;
@@ -79,7 +101,7 @@ const startServer = async () => {
       }
 
       const tx = wallet.createTransaction(sensor_id, reading, tp, metadata);
-      p2pServer.transactionPool.updateOrAddTransaction(tx)
+      p2pServer.transactionPool.updateOrAddTransaction(tx);
       p2pServer.broadcastTransaction(tx);
 
       return res.status(201).json({ ok: true, transaction: tx });
@@ -99,6 +121,16 @@ const startServer = async () => {
 
   p2pServer.syncChains();
 
+  if (consensusType == "luck") {
+    startPoLRoundScheduler();
+  } else if (consensusType == "bid") {
+    startRoundScheduler();
+  } else {
+    throw new Error(
+      "Invalid consensus type. Use --consensus=luck or --consensus=bid"
+    );
+  }
+
   /**
    * Utility: get aligned time offset for round loop
    */
@@ -112,7 +144,7 @@ const startServer = async () => {
    */
   function phase1() {
     bidManager.round += 1;
-    const bidPacket= bidManager.generateBid(bidManager.round, wallet);
+    const bidPacket = bidManager.generateBid(bidManager.round, wallet);
     p2pServer.broadcastBid(bidPacket);
     console.log(`This is Round: ${bidPacket.round}`);
   }
@@ -136,7 +168,7 @@ const startServer = async () => {
    * Start a round-aligned loop
    */
   function startRoundScheduler() {
-    console.log(`\n🕣 Time now: ${new Date().toISOString()}`)
+    console.log(`\n🕣 Time now: ${new Date().toISOString()}`);
     const delay = getNextAlignedDelay(ROUND_INTERVAL);
     console.log(`⏱ First round starts in ${delay / 1000}s`);
 
@@ -152,11 +184,17 @@ const startServer = async () => {
   function runRound() {
     console.log(`\n🌐 Starting new round at ${new Date().toISOString()}\n`);
     phase1(); // Immediately run phase 1
-    console.log(`🌐 Bid generation and broadcasting done at ${new Date().toISOString()}`); 
+    console.log(
+      `🌐 Bid generation and broadcasting done at ${new Date().toISOString()}`
+    );
 
     // Phase 2 starts after 2 minutes
     setTimeout(() => {
-      console.log(`📜 Collected ${bidManager.bidList.get(bidManager.round).length} bids so far for round ${bidManager.round}`);
+      console.log(
+        `📜 Collected ${
+          bidManager.bidList.get(bidManager.round).length
+        } bids so far for round ${bidManager.round}`
+      );
       console.log(`\n🌐 Phase 2 starting at ${new Date().toISOString()}\n`);
       phase2();
     }, PHASE_1_DURATION);
@@ -165,10 +203,63 @@ const startServer = async () => {
     setTimeout(() => {
       console.log(`\n🌐 Phase 3 starting at ${new Date().toISOString()}\n`);
       phase3();
-    }, PHASE_3_START);    
+    }, PHASE_3_START);
   }
 
-  startRoundScheduler();
+  function generateAndSendSensorData() {
+    sensor_id = "sensor-" + Math.floor(Math.random() * 1000);
+    reading = {
+        value: parseFloat((Math.random() * 100).toFixed(2))
+    };
+    metadata = {
+        timestamp: new Date().toISOString(),
+        unit: "Celsius"
+    };
+
+    const tx = wallet.createTransaction(sensor_id, reading, tp, metadata);
+    p2pServer.broadcastTransaction(tx);
+    console.log("✨: Generated and broadcasted sensor data related to sensor-id: ", sensor_id);
+  }
+
+  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 10000) : console.log("❌ Sensor data simulation disabled");
+
+
+  function startPoLRoundScheduler() {
+    console.log(`\n🕣 Current time: ${new Date().toISOString()}`);
+    const delay = getNextAlignedDelay(ROUND_INTERVAL); //20 seconds
+    console.log(`⏱ First round starts in ${delay / 1000}s`);
+
+    let round = blockchain.getLastBlock().luckProof?.round + 1 || 1;
+
+    setTimeout(() => {
+      runPoLRound(++round); //run first round immediately
+      setInterval(() => runPoLRound(++round), ROUND_INTERVAL); //  it runs this in every 20 seconds
+    }, delay); //waits delay ms
+  }
+
+  function runPoLRound(round) {
+    const roundStart = Date.now();
+    console.log(
+      `\n🌐 New round ${round} started at ${new Date().toISOString()}`
+    );
+
+    const proposal = luckNode.createProposalWithLuck(round);
+    p2pServer.lastGeneratedProposal = proposal;
+
+    tp.removeConfirmedTransactions(proposal.block.transactions);
+
+    console.log(
+      `Round ${round}: generated proposal luck=${proposal.block.luckProof.luck.toFixed(
+        6
+      )}`
+    );
+
+    const delay = Math.max(0, roundStart + PROPOSAL_SCHEDULE_DELAY - Date.now());
+
+    setTimeout(() =>
+      p2pServer.scheduleProposalBroadcast(proposal),   
+    delay);
+  }
 };
 
 startServer();

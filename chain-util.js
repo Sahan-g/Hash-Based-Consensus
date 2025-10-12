@@ -18,7 +18,7 @@ class ChainUtil {
   // }
 
   static verifySignature(publicKey, signature, dataHash) {
-    console.log(`Verifying signature for dataHash: ${dataHash} with publicKey: ${publicKey}`);
+    // console.log(`Verifying signature for dataHash: ${dataHash} with publicKey: ${publicKey}`);
     const isVerified = ec.keyFromPublic(publicKey, "hex").verify(dataHash, signature);
     console.log(`✅ Signature verified: ${isVerified}`);
     return isVerified;
