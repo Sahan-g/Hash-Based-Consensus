@@ -15,6 +15,8 @@ services:
       P2P_HOST: "{{ ansible_host }}"
       BOOTSTRAP_ADDRESS: "{{ bootstrap_address }}"
       DB_PATH: "/data/chaindata"
+      ENABLE_SENSOR_SIM: "true"
+      CONSENSUS_TYPE: "bid"
     volumes:
       - {{ inventory_hostname }}-data:/data
 

@@ -7,9 +7,6 @@ const PHASE_1_DURATION = 4 * 1000; // First 4 seconds for publishing randomness
 const PHASE_3_START = 18 * 1000; // Leader publishes block at 18th minute
 const TRANSACTION_COLLECTION_DURATION = 16 * 1000; // Collect transactions for first 16 seconds
 
-//bid or luck
-CONSENSUS_TYPE = "luck";
-
 // Broadcast scheduling parameters
 NUM_SLOTS = 10; // number of slots per round
 SLOT_MS = 50; // each slot = 50ms → max 500, 0.5s to wait
@@ -23,7 +20,6 @@ module.exports = {
   PHASE_1_DURATION,
   PHASE_3_START,
   TRANSACTION_COLLECTION_DURATION,
-  CONSENSUS_TYPE,
   NUM_SLOTS,
   SLOT_MS,
   PROPOSAL_SCHEDULE_DELAY,
