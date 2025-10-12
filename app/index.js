@@ -1,12 +1,10 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const Block = require("../blockchain/block");
 const Blockchain = require("../blockchain/index");
 const Wallet = require("../wallet");
 const TransactionPool = require("../transaction/transaction-pool");
 const BidManager = require("../bid/bid-manager");
 const P2PServer = require("./p2p-server");
-const consensus = require("../bid/consensus");
 const LuckNode = require("../proof-of-luck/luck-node");
 const LuckConsensus = require("../proof-of-luck/luck-consensus");
 
