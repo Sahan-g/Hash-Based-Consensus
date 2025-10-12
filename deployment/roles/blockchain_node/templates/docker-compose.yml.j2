@@ -3,6 +3,7 @@ version: '3.8'
 services:
   {{ inventory_hostname }}:
     image: {{ docker_image }}
+    pull_policy: always
     container_name: {{ inventory_hostname }}
     restart: unless-stopped
     ports:
