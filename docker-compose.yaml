@@ -11,6 +11,8 @@ services:
       P2P_HOST: "node01.example.com"
       BOOTSTRAP_ADDRESS: "https://bootstrap.yourdomain.com"
       DB_PATH: "/data/chaindata"
+      ENABLE_SENSOR_SIM: "true"
+      CONSENSUS_TYPE: "bid"
     volumes:
       - node01-data:/data
 

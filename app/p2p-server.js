@@ -11,7 +11,6 @@ const {
   transformBidManagerToHashTable,
 } = require("../bid/consensus.js");
 const Block = require("../blockchain/block");
-const BidManager = require("../bid/bid-manager.js");
 
 const {NUM_SLOTS, SLOT_MS} = require("../config");
 
