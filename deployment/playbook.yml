@@ -1,0 +1,6 @@
+---
+- name: Deploy blockchain node containers
+  hosts: blockchain_nodes
+  become: true
+  roles:
+    - blockchain_node
