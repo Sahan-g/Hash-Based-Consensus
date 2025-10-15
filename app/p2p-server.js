@@ -135,7 +135,7 @@ class P2PServer {
           const isAdded = this.blockchain.addBlockToChain(data.block);
           if (isAdded) {
             this.transactionPool.removeConfirmedTransactions(
-              data.block.transactions
+              data.block.transactions, data.block.proposerPublicKey, this.bidManager.selfPublicKey
             );
           }
           break;
@@ -200,13 +200,12 @@ class P2PServer {
     });
   }
 
-  broadcastBlock(round, wallet) {
+  broadcastBlock(round, wallet, roundStart) {
     // console.log("hit");
     console.log(this.transactionPool);
     const transactions = this.transactionPool.getTransactionsForRound(
       this.transactionPool,
-      wallet,
-      this.bidManager.round
+      roundStart
     );
     const bidList = this.bidManager.bidList;
     const block = new Block({
@@ -231,7 +230,7 @@ class P2PServer {
         `✅ Selected as the proposer for this round. Broadcasting and adding block`
       );
       this.blockchain.addBlockToChain(block);
-      this.transactionPool.removeConfirmedTransactions(block.transactions);
+      this.transactionPool.removeConfirmedTransactions(block.transactions, proposerPublicKey, this.bidManager.selfPublicKey);
       this.sockets.forEach((socket) => {
         socket.send(JSON.stringify({ type: MESSAGE_TYPES.block, block }));
       });
