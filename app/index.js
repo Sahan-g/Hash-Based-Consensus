@@ -166,61 +166,84 @@ const startServer = async () => {
    * Start a round-aligned loop
    */
   function startRoundScheduler() {
-    console.log(`\n🕣 Time now: ${new Date().toISOString()}`);
+    console.log(`\n🕣 Current time: ${new Date().toISOString()}`);
     const delay = getNextAlignedDelay(ROUND_INTERVAL);
     console.log(`⏱ First round starts in ${delay / 1000}s`);
 
-    setTimeout(() => {
-      runRound(); // first round
-      setInterval(runRound, ROUND_INTERVAL); // repeat
+    setTimeout(async function runSequentialRounds() {
+      const roundStart = Date.now();``
+
+      await runRound(); // Wait for full round (phases 1–3) to complete
+
+      const elapsed = Date.now() - roundStart;
+      const remaining = Math.max(0, ROUND_INTERVAL - elapsed);
+
+      console.log(
+        `\n🧮 Round duration: ${elapsed}ms | Waiting ${remaining}ms before next round...\n`
+      );
+
+      // Recalculate next alignment to reduce drift
+      const nextDelay = getNextAlignedDelay(ROUND_INTERVAL);
+      setTimeout(runSequentialRounds, nextDelay);
     }, delay);
   }
-
   /**
    * One full 10-minute round
    */
-  function runRound() {
-    console.log(`\n🌐 Starting new round at ${new Date().toISOString()}\n`);
-    phase1(); // Immediately run phase 1
-    console.log(
-      `🌐 Bid generation and broadcasting done at ${new Date().toISOString()}`
-    );
+  async function runRound() {
+    return new Promise((resolve) => {
+      const roundStartTime = new Date().toISOString();
+      console.log(`\n🌐 Starting new round at ${roundStartTime}`);
 
-    // Phase 2 starts after 2 minutes
-    setTimeout(() => {
-      console.log(
-        `📜 Collected ${
-          bidManager.bidList.get(bidManager.round).length
-        } bids so far for round ${bidManager.round}`
-      );
-      console.log(`\n🌐 Phase 2 starting at ${new Date().toISOString()}\n`);
-      phase2();
-    }, PHASE_1_DURATION);
+      // ---- Phase 1 ----
+      phase1();
+      console.log(`🌱 Phase 1 started (bid generation)`);
 
-    // Phase 3 starts at 9-minute mark
-    setTimeout(() => {
-      console.log(`\n🌐 Phase 3 starting at ${new Date().toISOString()}\n`);
-      phase3();
-    }, PHASE_3_START);
+      // ---- Phase 2 ----
+      setTimeout(() => {
+        const bidCount = bidManager.bidList.get(bidManager.round)?.length || 0;
+        console.log(
+          `📜 Collected ${bidCount} bids so far for round ${bidManager.round}`
+        );
+        console.log(`🕓 Phase 2 started`);
+        phase2();
+      }, PHASE_1_DURATION);
+
+      // ---- Phase 3 ----
+      setTimeout(async () => {
+        console.log(`🚀 Phase 3 started`);
+        await phase3();
+
+        const roundEndTime = new Date().toISOString();
+        console.log(
+          `✅ Round ${bidManager.round} completed at ${roundEndTime}`
+        );
+        resolve(); // ✅ Signals that the round is complete
+      }, PHASE_3_START);
+    });
   }
 
   function generateAndSendSensorData() {
     sensor_id = "sensor-" + Math.floor(Math.random() * 1000);
     reading = {
-        value: parseFloat((Math.random() * 100).toFixed(2))
+      value: parseFloat((Math.random() * 100).toFixed(2)),
     };
     metadata = {
-        timestamp: new Date().toISOString(),
-        unit: "Celsius"
+      timestamp: new Date().toISOString(),
+      unit: "Celsius",
     };
 
     const tx = wallet.createTransaction(sensor_id, reading, tp, metadata);
     p2pServer.broadcastTransaction(tx);
-    console.log("✨: Generated and broadcasted sensor data related to sensor-id: ", sensor_id);
+    console.log(
+      "✨: Generated and broadcasted sensor data related to sensor-id: ",
+      sensor_id
+    );
   }
 
-  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 10000) : console.log("❌ Sensor data simulation disabled");
-
+  ENABLE_SENSOR_SIM
+    ? setInterval(generateAndSendSensorData, 10000)
+    : console.log("❌ Sensor data simulation disabled");
 
   function startPoLRoundScheduler() {
     console.log(`\n🕣 Current time: ${new Date().toISOString()}`);
@@ -252,11 +275,12 @@ const startServer = async () => {
       )}`
     );
 
-    const delay = Math.max(0, roundStart + PROPOSAL_SCHEDULE_DELAY - Date.now());
+    const delay = Math.max(
+      0,
+      roundStart + PROPOSAL_SCHEDULE_DELAY - Date.now()
+    );
 
-    setTimeout(() =>
-      p2pServer.scheduleProposalBroadcast(proposal),   
-    delay);
+    setTimeout(() => p2pServer.scheduleProposalBroadcast(proposal), delay);
   }
 };
 
