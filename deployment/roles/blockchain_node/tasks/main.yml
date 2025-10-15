@@ -54,7 +54,8 @@
 
 # ✅ Verify
 - name: Check running containers
-  shell: docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+  shell: >
+    docker ps --format "table {{ '{{' }}.Names{{ '}}' }}\t{{ '{{' }}.Image{{ '}}' }}\t{{ '{{' }}.Status{{ '}}' }}\t{{ '{{' }}.Ports{{ '}}' }}"
   register: container_status
   become: true
 
