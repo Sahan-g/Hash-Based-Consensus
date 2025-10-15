@@ -11,11 +11,15 @@ const LuckConsensus = require("../proof-of-luck/luck-consensus");
 const ENABLE_SENSOR_SIM = process.env.ENABLE_SENSOR_SIM || false;
 const CONSENSUS_TYPE = process.env.CONSENSUS_TYPE || "bid";
 
+let roundStart;
+
 const {
   ROUND_INTERVAL,
   PHASE_1_DURATION,
   PHASE_3_START,
   PROPOSAL_SCHEDULE_DELAY,
+  CLEANUP_INDEX_FREQUENCY,
+  CLEANUP_LIMIT,
 } = require("../config");
 const PORT = process.env.PORT || 3001;
 
@@ -111,6 +115,19 @@ const startServer = async () => {
     }
   });
 
+  app.post("/delayedTransact", (req, res) => {
+    try {
+      const {transaction} = req.body;
+      console.log(`📥 Transaction received with sensor-id-${JSON.stringify(transaction.sensor_id)} at p2p-server`);
+      tp.updateOrAddTransaction(transaction); 
+    } catch (err) {
+      console.error("Failed to process transaction:", err);
+      return res
+        .status(500)
+        .json({ ok: false, error: err.message || "internal error" });
+    }
+  });
+
   app.listen(PORT, () => {
     console.log(`\nServer is running on port ${PORT}`);
   });
@@ -151,7 +168,7 @@ const startServer = async () => {
    * Phase 2: intermediate phase (2–9 min)
    */
   function phase2() {
-    console.log(`[${new Date().toISOString()}] Phase 2: Waiting for leader...`);
+    console.log(`[${Date.now()}] Phase 2: Waiting for leader...`);
     // Collect random numbers, do nothing
   }
 
@@ -159,14 +176,14 @@ const startServer = async () => {
    * Phase 3: block proposal
    */
   async function phase3() {
-    p2pServer.broadcastBlock(bidManager.round, wallet);
+    p2pServer.broadcastBlock(bidManager.round, wallet, roundStart);
   }
 
   /**
    * Start a round-aligned loop
    */
   function startRoundScheduler() {
-    console.log(`\n🕣 Time now: ${new Date().toISOString()}`);
+    console.log(`\n🕣 Time now in ms: ${Date.now()}`);
     const delay = getNextAlignedDelay(ROUND_INTERVAL);
     console.log(`⏱ First round starts in ${delay / 1000}s`);
 
@@ -180,10 +197,11 @@ const startServer = async () => {
    * One full 10-minute round
    */
   function runRound() {
-    console.log(`\n🌐 Starting new round at ${new Date().toISOString()}\n`);
+    roundStart = Date.now();
+    console.log(`\n🌐 Starting new round at ${roundStart} ms\n`);
     phase1(); // Immediately run phase 1
     console.log(
-      `🌐 Bid generation and broadcasting done at ${new Date().toISOString()}`
+      `🌐 Bid generation and broadcasting done at ${Date.now()} ms`
     );
 
     // Phase 2 starts after 2 minutes
@@ -193,15 +211,21 @@ const startServer = async () => {
           bidManager.bidList.get(bidManager.round).length
         } bids so far for round ${bidManager.round}`
       );
-      console.log(`\n🌐 Phase 2 starting at ${new Date().toISOString()}\n`);
+      console.log(`\n🌐 Phase 2 starting at ${Date.now()} ms\n`);
       phase2();
     }, PHASE_1_DURATION);
 
     // Phase 3 starts at 9-minute mark
     setTimeout(() => {
-      console.log(`\n🌐 Phase 3 starting at ${new Date().toISOString()}\n`);
+      console.log(`\n🌐 Phase 3 starting at ${Date.now()} ms\n`);
       phase3();
     }, PHASE_3_START);
+
+    let currentIndex = blockchain.getLastBlock().index;
+    if (currentIndex % CLEANUP_INDEX_FREQUENCY === 0) {
+      const cleanUpTime = blockchain.getLastBlock().timestamp - (CLEANUP_LIMIT * ROUND_INTERVAL);
+      cleanupPendingTransactions(cleanUpTime);
+    }
   }
 
   function generateAndSendSensorData() {
@@ -210,7 +234,7 @@ const startServer = async () => {
         value: parseFloat((Math.random() * 100).toFixed(2))
     };
     metadata = {
-        timestamp: new Date().toISOString(),
+        timestamp: Date.now(),
         unit: "Celsius"
     };
 
@@ -219,11 +243,11 @@ const startServer = async () => {
     console.log("✨: Generated and broadcasted sensor data related to sensor-id: ", sensor_id);
   }
 
-  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 10000) : console.log("❌ Sensor data simulation disabled");
+  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 4000) : console.log("❌ Sensor data simulation disabled");
 
 
   function startPoLRoundScheduler() {
-    console.log(`\n🕣 Current time: ${new Date().toISOString()}`);
+    console.log(`\n🕣 Current time: ${Date.now()}`);
     const delay = getNextAlignedDelay(ROUND_INTERVAL); //20 seconds
     console.log(`⏱ First round starts in ${delay / 1000}s`);
 
@@ -238,13 +262,13 @@ const startServer = async () => {
   function runPoLRound(round) {
     const roundStart = Date.now();
     console.log(
-      `\n🌐 New round ${round} started at ${new Date().toISOString()}`
+      `\n🌐 New round ${round} started at ${Date.now()}`
     );
 
     const proposal = luckNode.createProposalWithLuck(round);
     p2pServer.lastGeneratedProposal = proposal;
 
-    tp.removeConfirmedTransactions(proposal.block.transactions);
+    tp.removeConfirmedTransactionsForPoL(proposal.block.transactions);
 
     console.log(
       `Round ${round}: generated proposal luck=${proposal.block.luckProof.luck.toFixed(
@@ -258,6 +282,17 @@ const startServer = async () => {
       p2pServer.scheduleProposalBroadcast(proposal),   
     delay);
   }
+
+  function cleanupPendingTransactions(cleanUpTime) {
+    const pendingMap = tp.pendingTransactions;
+    pendingMap.forEach((tx, txId) => {
+      if (tx.timestamp < cleanUpTime) {
+        pendingMap.delete(txId);
+        console.log(`🧹 Removed pending transaction ${txId} with sensor-id ${tx.sensor_id} older than cleanup time ${cleanUpTime}`);
+      }
+    });
+  }
+
 };
 
 startServer();

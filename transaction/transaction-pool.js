@@ -1,11 +1,11 @@
 const Transaction = require("./transaction");
-const Block = require("../blockchain/block");
 
-const {ROUND_INTERVAL, TRANSACTION_COLLECTION_DURATION} = require("../config");
+const {TRANSACTION_COLLECTION_DURATION} = require("../config");
 
 class TransactionPool {
   constructor() {
     this.transactions = [];
+    this.pendingTransactions = new Map();
   }
 
   updateOrAddTransaction(transaction) {
@@ -14,17 +14,25 @@ class TransactionPool {
       console.error("❌ Transaction validation or verification failed. Transaction not added.");
       return;
     }
-    let transactionWithId = this.transactions.find(
-      (t) => t.id === transaction.id
-    );
-    if (transactionWithId) {
-      this.transactions[this.transactions.indexOf(transactionWithId)] =
-        transaction;
-      console.log("🔄 Transaction updated in the pool.");
+
+    if (this.pendingTransactions.has(transaction.id)) {
+      console.log("🔄 Transaction in pending list. Removing transaction from pending list.");
+      this.pendingTransactions.delete(transaction.id);
     } else {
-      this.transactions.push(transaction);
-      console.log("🆕 New transaction added to the pool.");
+      console.log("🆕 Transaction not in pending list. Proceeding to add/update in the pool.");
+      let transactionWithId = this.transactions.find(
+        (t) => t.id === transaction.id
+      );
+      if (transactionWithId) {
+        this.transactions[this.transactions.indexOf(transactionWithId)] =
+          transaction;
+        console.log("🔄 Transaction updated in the pool.");
+      } else {
+        this.transactions.push(transaction);
+        console.log("🆕 New transaction added to the pool.");
+      }
     }
+
   }
 
   getTransactions() {
@@ -60,7 +68,31 @@ class TransactionPool {
       return true;
   }
 
-  removeConfirmedTransactions(confirmedTransactions) {
+  removeConfirmedTransactions(confirmedTransactions, proposerPublicKey, myPublicKey) {
+    // console.log("✅ Confirmed Transactions", confirmedTransactions);
+
+    if (!Array.isArray(confirmedTransactions)) {
+      console.warn("⚠️ confirmedTransactions is not a valid array:", confirmedTransactions);
+      return;
+    }
+
+    confirmedTransactions.forEach(tx => {
+      let transactionWithId = this.transactions.find(
+        (t) => t.id === tx.id
+      );
+      if (transactionWithId) {
+        console.log(`🗑️ Removing confirmed transaction ${tx.id} from the pool.`);
+        this.transactions.splice(this.transactions.indexOf(transactionWithId), 1);
+      } else if (proposerPublicKey !== myPublicKey) {
+        this.pendingTransactions.set(tx.id, tx);
+        console.log(`🔖 Transaction ${tx.id} not found in pool. Added to pending transactions.`);
+      } else {
+        console.log(`ℹ️ Transaction ${tx.id} not found in pool. No action taken as this node is the proposer.`);
+      }
+    });
+  }
+
+  removeConfirmedTransactionsForPoL(confirmedTransactions) {
     // console.log("✅ Confirmed Transactions", confirmedTransactions);
 
     if (!Array.isArray(confirmedTransactions)) {
@@ -74,19 +106,22 @@ class TransactionPool {
   }
 
 
-  getTransactionsForRound(transactionPool,wallet,round) {
+  getTransactionsForRound(transactionPool, roundStart) {
     const allTxns = transactionPool.transactions;
     // console.log("all tx:", this.transactions)
-    const roundStart = Block.genesis(wallet).timestamp + round * ROUND_INTERVAL;
+    console.log(`Round start time: ${roundStart}`);
     const roundEndLimit = roundStart + TRANSACTION_COLLECTION_DURATION; // 8-minute mark
-
+    
+    console.log(`Round start: ${roundStart}`);
+    console.log(`Round end limit: ${roundEndLimit}`);
     // Filter and sort
     const filteredTxns = allTxns
       .filter(
-        (txn) =>  txn.timestamp < roundEndLimit // lower limit removed because since we consider txns only upto  8 minutes some will be left for the next round
+        (txn) => txn.timestamp < roundEndLimit // lower limit removed because since we consider txns only upto  8 minutes some will be left for the next round
       )
       .sort((a, b) => a.timestamp - b.timestamp);
       console.log("filtered:",filteredTxns)
+      // Add rest to pending list
     return filteredTxns;
   }
 }
