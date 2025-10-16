@@ -1,60 +1,26 @@
 ---
-- name: Ensure required packages for Docker repo are installed
-  apt:
-    name:
-      - ca-certificates
-      - curl
-      - gnupg
-      - lsb-release
-    state: present
-    update_cache: yes
-  become: true
+# ==============================================================
+# Blockchain Node Deployment – Reset & Redeploy (with forced image pull)
+# ==============================================================
 
-- name: Add Docker GPG key (Debian-safe)
-  ansible.builtin.shell: |
-    set -e
-    mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor --yes --batch -o /etc/apt/keyrings/docker.gpg
-    chmod a+r /etc/apt/keyrings/docker.gpg
+# 🧹 Cleanup Section
+- name: Stop and remove all existing containers and volumes
+  shell: |
+    docker compose -f /opt/blockchain-node/docker-compose.yml down -v --remove-orphans || true
+    docker system prune -af || true
   args:
-    executable: /bin/bash
+    chdir: /opt/blockchain-node
+  ignore_errors: true
   become: true
 
-
-- name: Add Docker repository for Debian (bookworm)
-  ansible.builtin.shell: |
-    echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-      https://download.docker.com/linux/debian bookworm stable" \
-      | tee /etc/apt/sources.list.d/docker.list > /dev/null
-  args:
-    executable: /bin/bash
+# 🧱 Directory setup
+- name: Remove old blockchain-node directory
+  file:
+    path: /opt/blockchain-node
+    state: absent
   become: true
 
-- name: Update apt cache
-  apt:
-    update_cache: yes
-  become: true
-
-- name: Install Docker Engine and Docker Compose plugin
-  apt:
-    name:
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-      - docker-buildx-plugin
-      - docker-compose-plugin
-    state: present
-  become: true
-
-- name: Ensure Docker service is started and enabled
-  service:
-    name: docker
-    state: started
-    enabled: yes
-  become: true
-
-- name: Ensure /opt/blockchain-node directory exists
+- name: Recreate blockchain-node directory
   file:
     path: /opt/blockchain-node
     state: directory
@@ -63,6 +29,7 @@
     mode: '0755'
   become: true
 
+# 🧩 Copy docker-compose template
 - name: Copy docker-compose template
   template:
     src: docker-compose.yml.j2
@@ -72,9 +39,26 @@
     mode: '0644'
   become: true
 
+# 🔄 Pull the specific (tagged) image 
+- name: Force pull the latest version of the blockchain image
+  shell: docker pull {{ docker_image }}
+  become: true
+
+# 🚀 Deploy container
 - name: Deploy blockchain container
   shell: |
     docker compose -f /opt/blockchain-node/docker-compose.yml up -d
   args:
     chdir: /opt/blockchain-node
   become: true
+
+# ✅ Verify
+- name: Check running containers
+  shell: >
+    docker ps --format "table {{ '{{' }}.Names{{ '}}' }}\t{{ '{{' }}.Image{{ '}}' }}\t{{ '{{' }}.Status{{ '}}' }}\t{{ '{{' }}.Ports{{ '}}' }}"
+  register: container_status
+  become: true
+
+- name: Show container status
+  debug:
+    msg: "{{ container_status.stdout_lines }}"
