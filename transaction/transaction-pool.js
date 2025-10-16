@@ -19,7 +19,7 @@ class TransactionPool {
       console.log("🔄 Transaction in pending list. Removing transaction from pending list.");
       this.pendingTransactions.delete(transaction.id);
     } else {
-      console.log("🆕 Transaction not in pending list. Proceeding to add/update in the pool.");
+      // console.log("🆕 Transaction not in pending list. Proceeding to add/update in the pool.");
       let transactionWithId = this.transactions.find(
         (t) => t.id === transaction.id
       );
@@ -81,7 +81,7 @@ class TransactionPool {
         (t) => t.id === tx.id
       );
       if (transactionWithId) {
-        console.log(`🗑️ Removing confirmed transaction ${tx.id} from the pool.`);
+        // console.log(`🗑️ Removing confirmed transaction ${tx.id} from the pool.`);
         this.transactions.splice(this.transactions.indexOf(transactionWithId), 1);
       } else if (proposerPublicKey !== myPublicKey) {
         this.pendingTransactions.set(tx.id, tx);
@@ -121,7 +121,6 @@ class TransactionPool {
       )
       .sort((a, b) => a.timestamp - b.timestamp);
       console.log("filtered:",filteredTxns)
-      // Add rest to pending list
     return filteredTxns;
   }
 }
