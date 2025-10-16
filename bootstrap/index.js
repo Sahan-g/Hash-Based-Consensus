@@ -40,7 +40,7 @@ app.post('/heartbeat', (req, res) => {
         heartbeats[address] = now;
         if(!peers.includes(address))
             peers.push(address);
-        console.log(`Heartbeat from ${address} at ${new Date(now).toISOString()}`);
+        console.log(`Heartbeat from ${address} at ${Date.now()}`);
     }
     res.json({status: 'ok'});
 })

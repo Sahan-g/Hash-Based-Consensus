@@ -100,7 +100,7 @@ class BidManager {
 
     if (!roundBids.some((b) => b.publicKey === bidPacket.publicKey)) {
       roundBids.push(bidPacket);
-      console.log(`✅ Bid added for round ${round} from ${bidPacket.publicKey} at ${new Date().toISOString()}`);
+      console.log(`✅ Bid added for round ${round} from ${bidPacket.publicKey} at ${Date.now()}`);
       // console.log(`Current bids for round ${round}: ${JSON.stringify(this.bidList.get(round))}`);
     }
   }

@@ -6,6 +6,8 @@ const ROUND_INTERVAL = 20 * 1000; // 20 seconds in ms
 const PHASE_1_DURATION = 4 * 1000; // First 4 seconds for publishing randomness
 const PHASE_3_START = 18 * 1000; // Leader publishes block at 18th minute
 const TRANSACTION_COLLECTION_DURATION = 16 * 1000; // Collect transactions for first 16 seconds
+const CLEANUP_INDEX_FREQUENCY = 10; // every 10 indices clean the pending transactions
+const CLEANUP_LIMIT = 5; // cleanup transactions older than 5 rounds
 
 // Broadcast scheduling parameters
 NUM_SLOTS = 10; // number of slots per round
@@ -23,4 +25,6 @@ module.exports = {
   NUM_SLOTS,
   SLOT_MS,
   PROPOSAL_SCHEDULE_DELAY,
+  CLEANUP_INDEX_FREQUENCY,
+  CLEANUP_LIMIT,
 };
