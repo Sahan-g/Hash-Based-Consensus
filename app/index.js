@@ -177,6 +177,11 @@ const startServer = async () => {
    */
   async function phase3() {
     p2pServer.broadcastBlock(bidManager.round, wallet, roundStart);
+    let currentIndex = blockchain.getLastBlock().index;
+    if (currentIndex % CLEANUP_INDEX_FREQUENCY === 0) {
+      const cleanUpTime = blockchain.getLastBlock().timestamp - (CLEANUP_LIMIT * ROUND_INTERVAL);
+      cleanupPendingTransactions(cleanUpTime);
+    }
   }
 
   /**
@@ -187,51 +192,63 @@ const startServer = async () => {
     const delay = getNextAlignedDelay(ROUND_INTERVAL);
     console.log(`⏱ First round starts in ${delay / 1000}s`);
 
-    setTimeout(() => {
-      runRound(); // first round
-      setInterval(runRound, ROUND_INTERVAL); // repeat
+    setTimeout(async function runSequentialRounds() {
+      const roundStartTime = Date.now();``
+
+      await runRound(); // Wait for full round (phases 1–3) to complete
+
+      const elapsed = Date.now() - roundStartTime;
+      const remaining = Math.max(0, ROUND_INTERVAL - elapsed);
+
+      console.log(
+        `\n🧮 Round duration: ${elapsed}ms | Waiting ${remaining}ms before next round...\n`
+      );
+
+      // Recalculate next alignment to reduce drift
+      const nextDelay = getNextAlignedDelay(ROUND_INTERVAL);
+      setTimeout(runSequentialRounds, nextDelay);
     }, delay);
   }
-
   /**
    * One full 10-minute round
    */
-  function runRound() {
-    roundStart = Date.now();
-    console.log(`\n🌐 Starting new round at ${roundStart} ms\n`);
-    phase1(); // Immediately run phase 1
-    console.log(
-      `🌐 Bid generation and broadcasting done at ${Date.now()} ms`
-    );
+  async function runRound() {
+    return new Promise((resolve) => {
+      roundStart = Date.now();
+      console.log(`\n🌐 Starting new round at ${roundStart}`);
 
-    // Phase 2 starts after 2 minutes
-    setTimeout(() => {
-      console.log(
-        `📜 Collected ${
-          bidManager.bidList.get(bidManager.round).length
-        } bids so far for round ${bidManager.round}`
-      );
-      console.log(`\n🌐 Phase 2 starting at ${Date.now()} ms\n`);
-      phase2();
-    }, PHASE_1_DURATION);
+      // ---- Phase 1 ----
+      phase1();
+      console.log(`🌱 Phase 1 started (bid generation)`);
 
-    // Phase 3 starts at 9-minute mark
-    setTimeout(() => {
-      console.log(`\n🌐 Phase 3 starting at ${Date.now()} ms\n`);
-      phase3();
-    }, PHASE_3_START);
+      // ---- Phase 2 ----
+      setTimeout(() => {
+        const bidCount = bidManager.bidList.get(bidManager.round)?.length || 0;
+        console.log(
+          `📜 Collected ${bidCount} bids so far for round ${bidManager.round}`
+        );
+        console.log(`🕓 Phase 2 started`);
+        phase2();
+      }, PHASE_1_DURATION);
 
-    let currentIndex = blockchain.getLastBlock().index;
-    if (currentIndex % CLEANUP_INDEX_FREQUENCY === 0) {
-      const cleanUpTime = blockchain.getLastBlock().timestamp - (CLEANUP_LIMIT * ROUND_INTERVAL);
-      cleanupPendingTransactions(cleanUpTime);
-    }
+      // ---- Phase 3 ----
+      setTimeout(async () => {
+        console.log(`🚀 Phase 3 started`);
+        await phase3();
+
+        const roundEndTime = Date.now();
+        console.log(
+          `✅ Round ${bidManager.round} completed at ${roundEndTime}`
+        );
+        resolve(); // ✅ Signals that the round is complete
+      }, PHASE_3_START);
+    });
   }
 
   function generateAndSendSensorData() {
     sensor_id = "sensor-" + Math.floor(Math.random() * 1000);
     reading = {
-        value: parseFloat((Math.random() * 100).toFixed(2))
+      value: parseFloat((Math.random() * 100).toFixed(2)),
     };
     metadata = {
         timestamp: Date.now(),
@@ -240,10 +257,13 @@ const startServer = async () => {
 
     const tx = wallet.createTransaction(sensor_id, reading, tp, metadata);
     p2pServer.broadcastTransaction(tx);
-    console.log("✨: Generated and broadcasted sensor data related to sensor-id: ", sensor_id);
+    console.log(
+      "✨: Generated and broadcasted sensor data related to sensor-id: ",
+      sensor_id
+    );
   }
 
-  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 4000) : console.log("❌ Sensor data simulation disabled");
+  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 8000) : console.log("❌ Sensor data simulation disabled");
 
 
   function startPoLRoundScheduler() {
@@ -276,7 +296,10 @@ const startServer = async () => {
       )}`
     );
 
-    const delay = Math.max(0, roundStart + PROPOSAL_SCHEDULE_DELAY - Date.now());
+    const delay = Math.max(
+      0,
+      roundStart + PROPOSAL_SCHEDULE_DELAY - Date.now()
+    );
 
     setTimeout(() =>
       p2pServer.scheduleProposalBroadcast(proposal),   
