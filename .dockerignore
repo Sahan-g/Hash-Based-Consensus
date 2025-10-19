@@ -12,3 +12,4 @@ dist
 deployment/
 ansible.cfg
 inventory.ini
+testUtils/

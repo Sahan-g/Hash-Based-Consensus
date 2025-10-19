@@ -263,7 +263,7 @@ const startServer = async () => {
     );
   }
 
-  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 8000) : console.log("❌ Sensor data simulation disabled");
+  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 60000) : console.log("❌ Sensor data simulation disabled");
 
 
   function startPoLRoundScheduler() {
