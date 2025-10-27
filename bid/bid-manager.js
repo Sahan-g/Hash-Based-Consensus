@@ -1,6 +1,6 @@
 const BidPacket = require("./bid-packet");
 const ChainUtil = require("../chain-util");
-const { ROUND_INTERVAL } = require("../config");
+const { ROUND_INTERVAL, STRICT_ROUND_VALIDATION } = require("../config");
 const { log } = require("console");
 const Block = require("../blockchain/block");
 const {
@@ -19,7 +19,8 @@ class BidManager {
   constructor(selfPublicKey, blockchain) {
     this.selfPublicKey = selfPublicKey;
     this.bidList = new Map();
-    this.round = blockchain.getLastBlock().index + 1;
+    // Initialize round based on time for strict synchronization
+    this.round = Math.floor(Date.now() / ROUND_INTERVAL);
   }
 
   generateBid(round, wallet) {
@@ -41,15 +42,25 @@ class BidManager {
   receiveBid(bidPacket) {
     if (!BidPacket.verifyBid(bidPacket)) return false;
 
+    // STRICT TIME-BASED SYNCHRONIZATION: Only accept bids for current round
+    if (STRICT_ROUND_VALIDATION && bidPacket.round !== this.round) {
+      console.log(`⏭️ Bid from round ${bidPacket.round} rejected - current round is ${this.round} (strict mode)`);
+      return false;
+    }
+
     this.addToBidList(bidPacket);
 
     return true;
   }
 
   handleRound(round) {
-    if(this.round < round) {
+    // In strict time-based mode, don't update round from peers
+    // Round is calculated from time only
+    if (!STRICT_ROUND_VALIDATION && this.round < round) {
       this.round = round;
       console.log(`🔄 Updated to new round: ${this.round}`);
+    } else if (STRICT_ROUND_VALIDATION) {
+      console.log(`⏰ Ignoring round update in strict time-based mode (current: ${this.round})`);
     }
   }
 

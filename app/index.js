@@ -20,6 +20,7 @@ const {
   PROPOSAL_SCHEDULE_DELAY,
   CLEANUP_INDEX_FREQUENCY,
   CLEANUP_LIMIT,
+  MIN_BIDS_REQUIRED,
 } = require("../config");
 const PORT = process.env.PORT || 3001;
 
@@ -67,6 +68,24 @@ const startServer = async () => {
     } else {
       res.status(404).json({ message: "No bids found for this round" });
     }
+  });
+
+  // Chain status endpoint for monitoring
+  app.get("/chain-status", (req, res) => {
+    res.json({
+      length: blockchain.chain.length,
+      lastBlock: blockchain.getLastBlock(),
+      currentRound: bidManager.round,
+      peers: p2pServer.sockets.length,
+      publicKey: wallet.publicKey.substring(0, 16) + "..."
+    });
+  });
+
+  // Force chain sync endpoint
+  app.post("/force-sync", (req, res) => {
+    console.log("🔄 Manual chain sync requested");
+    p2pServer.syncChains();
+    res.json({ ok: true, message: "Chain sync initiated" });
   });
 
   // app.post("/transact", (req, res) => {
@@ -155,28 +174,53 @@ const startServer = async () => {
   }
 
   /**
+   * Calculate current round number based on time synchronization
+   * All nodes with synchronized clocks will get the same round number
+   */
+  function getCurrentRoundFromTime() {
+    const now = Date.now();
+    const roundNumber = Math.floor(now / ROUND_INTERVAL);
+    return roundNumber;
+  }
+
+  /**
    * Phase 1: publish random number
    */
   function phase1() {
-    bidManager.round += 1;
+    // STRICT TIME-BASED SYNCHRONIZATION: Calculate round from time, not chain
+    const timeBasedRound = getCurrentRoundFromTime();
+    bidManager.round = timeBasedRound;
+    
     const bidPacket = bidManager.generateBid(bidManager.round, wallet);
     p2pServer.broadcastBid(bidPacket);
-    console.log(`This is Round: ${bidPacket.round}`);
+    
+    console.log(`⏰ Round ${bidPacket.round} - Phase 1: Bid generated (time-based sync)`);
+    console.log(`📊 Time: ${Date.now()}, Round: ${timeBasedRound}`);
   }
 
   /**
    * Phase 2: intermediate phase (2–9 min)
    */
   function phase2() {
-    console.log(`[${Date.now()}] Phase 2: Waiting for leader...`);
-    // Collect random numbers, do nothing
+    const bidCount = bidManager.bidList.get(bidManager.round)?.length || 0;
+    console.log(`[${Date.now()}] Phase 2: Collecting bids...`);
+    console.log(`📊 Current bid count for round ${bidManager.round}: ${bidCount}`);
+    
+    if (bidCount < MIN_BIDS_REQUIRED) {
+      console.log(`⚠️ Warning: Only ${bidCount} bid(s) collected. Need ${MIN_BIDS_REQUIRED} to propose block.`);
+    }
   }
 
   /**
    * Phase 3: block proposal
    */
   async function phase3() {
+    const bidCount = bidManager.bidList.get(bidManager.round)?.length || 0;
+    console.log(`🚀 Phase 3: Attempting block proposal for round ${bidManager.round}`);
+    console.log(`📊 Final bid count: ${bidCount}`);
+    
     p2pServer.broadcastBlock(bidManager.round, wallet, roundStart);
+    
     let currentIndex = blockchain.getLastBlock().index;
     if (currentIndex % CLEANUP_INDEX_FREQUENCY === 0) {
       const cleanUpTime = blockchain.getLastBlock().timestamp - (CLEANUP_LIMIT * ROUND_INTERVAL);
@@ -192,6 +236,8 @@ const startServer = async () => {
     const delay = getNextAlignedDelay(ROUND_INTERVAL);
     console.log(`⏱ First round starts in ${delay / 1000}s`);
 
+    let roundCounter = 0; // Track rounds for periodic sync
+
     setTimeout(async function runSequentialRounds() {
       const roundStartTime = Date.now();``
 
@@ -203,6 +249,14 @@ const startServer = async () => {
       console.log(
         `\n🧮 Round duration: ${elapsed}ms | Waiting ${remaining}ms before next round...\n`
       );
+
+      roundCounter++;
+      
+      // Sync chain every 10 rounds to prevent drift
+      if (roundCounter % 10 === 0) {
+        console.log(`\n🔄 Periodic chain sync at round ${roundCounter}`);
+        p2pServer.syncChains();
+      }
 
       // Recalculate next alignment to reduce drift
       const nextDelay = getNextAlignedDelay(ROUND_INTERVAL);
@@ -263,7 +317,7 @@ const startServer = async () => {
     );
   }
 
-  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 60000) : console.log("❌ Sensor data simulation disabled");
+  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 10000) : console.log("❌ Sensor data simulation disabled");
 
 
   function startPoLRoundScheduler() {

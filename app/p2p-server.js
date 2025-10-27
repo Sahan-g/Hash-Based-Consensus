@@ -12,7 +12,7 @@ const {
 } = require("../bid/consensus.js");
 const Block = require("../blockchain/block");
 
-const {NUM_SLOTS, SLOT_MS} = require("../config");
+const {NUM_SLOTS, SLOT_MS, MIN_BIDS_REQUIRED} = require("../config");
 
 // const peers = process.env.PEERS ? process.env.PEERS.split(',') : [];
 let peers = [];
@@ -36,6 +36,7 @@ class P2PServer {
     this.wallet = wallet;
     this.luckConsensus = luckConsensus;
     this.lastGeneratedProposal = null;
+    this.processingBlocks = new Set(); // Prevent duplicate block processing
   }
 
   async listen() {
@@ -105,6 +106,9 @@ class P2PServer {
     this.messageHandler(socket);
     this.sendChain(socket);
     this.sendRound(socket, this.bidManager.round);
+    
+    // Log chain status
+    console.log(`📊 My chain length: ${this.blockchain.chain.length}, Round: ${this.bidManager.round}`);
 
     socket.on("close", () => {
       console.log(`❌ Connection to a peer closed`);
@@ -127,16 +131,34 @@ class P2PServer {
         //     this.transactionPool.clear();
         //     break;
         case MESSAGE_TYPES.block:
-          console.log(
-            `📥 Block received with index ${JSON.stringify(
-              data.block.index
-            )} at p2p-server}`
-          );
-          const isAdded = this.blockchain.addBlockToChain(data.block);
-          if (isAdded) {
-            this.transactionPool.removeConfirmedTransactions(
-              data.block.transactions, data.block.proposerPublicKey, this.bidManager.selfPublicKey
+          const blockHash = data.block.hash;
+          
+          // Prevent duplicate processing
+          if (this.processingBlocks.has(blockHash)) {
+            console.log(`⏭️ Block ${blockHash.substring(0, 8)}... already being processed, skipping`);
+            return;
+          }
+          
+          this.processingBlocks.add(blockHash);
+          
+          try {
+            console.log(
+              `📥 Block received with index ${data.block.index} at p2p-server`
             );
+            const isAdded = this.blockchain.addBlockToChain(data.block);
+            if (isAdded) {
+              this.transactionPool.removeConfirmedTransactions(
+                data.block.transactions, data.block.proposerPublicKey, this.bidManager.selfPublicKey
+              );
+              console.log(`✅ Block ${data.block.index} added successfully`);
+            } else {
+              console.log(`⚠️ Block ${data.block.index} was not added`);
+            }
+          } finally {
+            // Remove from processing set after a delay to prevent immediate re-processing
+            setTimeout(() => {
+              this.processingBlocks.delete(blockHash);
+            }, 1000);
           }
           break;
         case MESSAGE_TYPES.round:
@@ -203,11 +225,24 @@ class P2PServer {
   broadcastBlock(round, wallet, roundStart) {
     // console.log("hit");
     console.log(this.transactionPool);
+    
+    // Check if we have enough bids for this round
+    const bidList = this.bidManager.bidList;
+    const roundBids = bidList.get(round) || [];
+    
+    if (roundBids.length < MIN_BIDS_REQUIRED) {
+      console.log(`⚠️ Insufficient bids for round ${round}: ${roundBids.length}/${MIN_BIDS_REQUIRED}. Skipping block proposal.`);
+      console.log(`⏭️ This prevents nodes from running ahead when they're the only bidder.`);
+      return;
+    }
+    
+    console.log(`✅ Sufficient bids collected: ${roundBids.length}/${MIN_BIDS_REQUIRED} for round ${round}`);
+    
     const transactions = this.transactionPool.getTransactionsForRound(
       this.transactionPool,
       roundStart
     );
-    const bidList = this.bidManager.bidList;
+    
     const block = new Block({
       index: this.blockchain.getLastBlock().index + 1,
       transactions,
@@ -229,11 +264,28 @@ class P2PServer {
       console.log(
         `✅ Selected as the proposer for this round. Broadcasting and adding block`
       );
-      this.blockchain.addBlockToChain(block);
+      
+      // Verify block before adding
+      if (!Block.verifyBlock(block)) {
+        console.error(`❌ Generated block failed verification!`);
+        return;
+      }
+      
+      const isAdded = this.blockchain.addBlockToChain(block);
+      
+      if (!isAdded) {
+        console.error(`❌ Failed to add own block to chain`);
+        return;
+      }
+      
       this.transactionPool.removeConfirmedTransactions(block.transactions, proposerPublicKey, this.bidManager.selfPublicKey);
+      
+      // Broadcast only after successful local addition
       this.sockets.forEach((socket) => {
         socket.send(JSON.stringify({ type: MESSAGE_TYPES.block, block }));
       });
+      
+      console.log(`📡 Block ${block.index} broadcast to ${this.sockets.length} peers`);
       return;
     }
     console.log(
@@ -298,6 +350,13 @@ class P2PServer {
     this.sockets.forEach((socket) => {
       socket.send(JSON.stringify({ type: MESSAGE_TYPES.bid, bid: bidPacket }));
     });
+  }
+
+  broadcastRound(round) {
+    this.sockets.forEach((socket) => {
+      socket.send(JSON.stringify({ type: MESSAGE_TYPES.round, round }));
+    });
+    console.log(`📣 Broadcast current round ${round} to all peers`);
   }
 }
 
