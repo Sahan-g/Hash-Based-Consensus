@@ -32,14 +32,30 @@ class Blockchain {
 
     async addBlockToChain(block) {
         // console.log(this.chain);
-        console.log(block);
-        if (Block.verifyBlock(block) && Block.isValidBlock(block, this.getLastBlock())) {
+        const lastBlock = this.getLastBlock();
+        
+        // Check if block already exists
+        if (this.chain.some(b => b.hash === block.hash)) {
+            console.log(`⏭️ Block with hash ${block.hash.substring(0, 8)}... already exists in chain. Skipping.`);
+            return false;
+        }
+        
+        // Check if block index is too old
+        if (block.index <= lastBlock.index) {
+            console.log(`⏭️ Block index ${block.index} is not greater than current last block ${lastBlock.index}. Skipping.`);
+            return false;
+        }
+        
+        console.log(`📝 Attempting to add block ${block.index} to chain (current last: ${lastBlock.index})`);
+        
+        if (Block.verifyBlock(block) && Block.isValidBlock(block, lastBlock)) {
             this.chain.push(block);
             await db.saveChain(this.chain);
-            console.log('👍 Block added to chain and saved to DB.');
+            console.log(`👍 Block ${block.index} added to chain and saved to DB.`);
             return true;
         } else {
-            console.log('❌ Invalid block. Not added to chain.');
+            console.log(`❌ Invalid block ${block.index}. Not added to chain.`);
+            return false;
         }
     }
 
@@ -68,20 +84,29 @@ class Blockchain {
     }
 
     async replaceChain(newChain, bidManager) {
-        if (newChain.length < this.chain.length) {
-            console.log('Received chain is not longer than the current chain. Ignoring.');
+        if (newChain.length <= this.chain.length) {
+            console.log('📛 Received chain is not longer than the current chain. Ignoring.');
             return;
         }
 
         if (!this.isChainValid(newChain)) {
-            console.log('Received chain is invalid. Ignoring.');
+            console.log('📛 Received chain is invalid. Ignoring.');
             return;
         }
 
-        console.log('Replacing current chain with new chain.');
+        console.log('🔁 Replacing current chain with new chain.');
+        const oldLength = this.chain.length;
         this.chain = newChain;
         await db.saveChain(this.chain);
-        console.log('Replaced chain and saved it to DB.');
+        
+        // Update bid manager round to match new chain
+        if (bidManager) {
+            const newRound = this.getLastBlock().index + 1;
+            bidManager.handleRound(newRound);
+            console.log(`🔄 Updated bid manager to round ${newRound}`);
+        }
+        
+        console.log(`✅ Chain replaced: ${oldLength} -> ${this.chain.length} blocks and saved to DB.`);
         
     }
 

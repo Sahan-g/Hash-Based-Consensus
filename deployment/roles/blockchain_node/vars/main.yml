@@ -1,2 +1,2 @@
-docker_image: sahangaw/hash-consensus:sha-baf7162
+docker_image: sahangaw/hash-consensus:2.0.2
 bootstrap_address: http://3.110.27.247
