@@ -12,6 +12,7 @@ const ENABLE_SENSOR_SIM = process.env.ENABLE_SENSOR_SIM || false;
 const CONSENSUS_TYPE = process.env.CONSENSUS_TYPE || "bid";
 
 let roundStart;
+let roundCounter;
 
 const {
   ROUND_INTERVAL,
@@ -21,6 +22,7 @@ const {
   CLEANUP_INDEX_FREQUENCY,
   CLEANUP_LIMIT,
   MIN_BIDS_REQUIRED,
+  NODE_SYNCING_FREQ
 } = require("../config");
 const PORT = process.env.PORT || 3001;
 
@@ -54,6 +56,12 @@ const startServer = async () => {
 
   app.get("/blocks", (req, res) => {
     res.json(blockchain.chain);
+  });
+
+  app.post("/chain", (req, res) => {
+    const { chain } = req.body;
+    blockchain.replaceChain(chain, bidManager);
+    res.json({ ok: true });
   });
 
   app.get("/transaction", (req, res) => {
@@ -137,7 +145,7 @@ const startServer = async () => {
   app.post("/delayedTransact", (req, res) => {
     try {
       const {transaction} = req.body;
-      console.log(`📥 Transaction received with sensor-id-${JSON.stringify(transaction.sensor_id)} at p2p-server`);
+      // console.log(`📥 Transaction received with sensor-id-${JSON.stringify(transaction.sensor_id)} at p2p-server`);
       tp.updateOrAddTransaction(transaction); 
     } catch (err) {
       console.error("Failed to process transaction:", err);
@@ -153,11 +161,12 @@ const startServer = async () => {
 
   p2pServer.listen();
 
-  p2pServer.syncChains();
+  // p2pServer.syncChains();
 
   if (consensusType == "luck") {
     startPoLRoundScheduler();
   } else if (consensusType == "bid") {
+    // const OVERRIDE = process.env.ROUND_DELAY_OVERRIDE ? Number(process.env.ROUND_DELAY_OVERRIDE) : null;
     startRoundScheduler();
   } else {
     throw new Error(
@@ -188,11 +197,29 @@ const startServer = async () => {
    */
   function phase1() {
     // STRICT TIME-BASED SYNCHRONIZATION: Calculate round from time, not chain
+    p2pServer.isVotingInProgress = false;
     const timeBasedRound = getCurrentRoundFromTime();
     bidManager.round = timeBasedRound;
+    console.log(`🛟🛟 TargetHash before clearing: ${p2pServer.targetHashForRound}`);
+    p2pServer.targetHashForRound = null;
+    console.log(`🛟🛟 TargetHash after clearing: ${p2pServer.targetHashForRound}`);
     
     const bidPacket = bidManager.generateBid(bidManager.round, wallet);
     p2pServer.broadcastBid(bidPacket);
+
+    // Clear the receivedMaliciousData, majorityReached, receivedLast10Blocks, majorityLast10Blocks, receivedLast10BlocksWithSender
+    blockchain.receivedMaliciousData = {};
+    blockchain.majorityReached = false;
+    blockchain.receivedBlocks = {}; // Clearing new state
+    console.log('💯Cleared state');
+
+    // Sync last 10 blocks every 10 rounds to prevent drift
+    roundCounter = blockchain.getLastBlock().index + 1;
+    if (roundCounter % NODE_SYNCING_FREQ === 0 && roundCounter != 0) {
+      console.log(`\n🔄 Periodic chain sync at round ${roundCounter}`);
+      p2pServer.syncLast10Blocks();
+    }
+    console.log(`🕰️ Rouncounter: ${roundCounter}`);
     
     console.log(`⏰ Round ${bidPacket.round} - Phase 1: Bid generated (time-based sync)`);
     console.log(`📊 Time: ${Date.now()}, Round: ${timeBasedRound}`);
@@ -219,6 +246,19 @@ const startServer = async () => {
     console.log(`🚀 Phase 3: Attempting block proposal for round ${bidManager.round}`);
     console.log(`📊 Final bid count: ${bidCount}`);
     
+    blockchain.majorityReached = false;
+    blockchain.receivedLast10Blocks = {};
+    blockchain.majorityLast10Blocks = null;
+    blockchain.receivedLast10BlocksWithSender = {};
+    blockchain.receivedChainsWithSender = {};
+    blockchain.receivedMaliciousDatasWithSender = {};
+    p2pServer.chainVotes = {};
+    p2pServer.receivedVotes = {};
+    p2pServer.needBlockHashSync = false;
+    p2pServer.isVoted = {};
+    p2pServer.isVoted2 = false;
+    p2pServer.receivedVoteWithSender = {};
+    console.log('💯Cleared state');
     p2pServer.broadcastBlock(bidManager.round, wallet, roundStart);
     
     let currentIndex = blockchain.getLastBlock().index;
@@ -234,9 +274,12 @@ const startServer = async () => {
   function startRoundScheduler() {
     console.log(`\n🕣 Time now in ms: ${Date.now()}`);
     const delay = getNextAlignedDelay(ROUND_INTERVAL);
+    // const delay = process.env.ROUND_DELAY_OVERRIDE ? Number(process.env.ROUND_DELAY_OVERRIDE) : getNextAlignedDelay(ROUND_INTERVAL);
+ // For demo
+
     console.log(`⏱ First round starts in ${delay / 1000}s`);
 
-    let roundCounter = 0; // Track rounds for periodic sync
+    // roundCounter = blockchain.getLastBlock().index + 1; // Track rounds for periodic sync
 
     setTimeout(async function runSequentialRounds() {
       const roundStartTime = Date.now();``
@@ -246,17 +289,17 @@ const startServer = async () => {
       const elapsed = Date.now() - roundStartTime;
       const remaining = Math.max(0, ROUND_INTERVAL - elapsed);
 
-      console.log(
-        `\n🧮 Round duration: ${elapsed}ms | Waiting ${remaining}ms before next round...\n`
-      );
+      // console.log(
+      //   `\n🧮 Round duration: ${elapsed}ms | Waiting ${remaining}ms before next round...\n`
+      // );
 
       roundCounter++;
       
-      // Sync chain every 10 rounds to prevent drift
-      if (roundCounter % 10 === 0) {
-        console.log(`\n🔄 Periodic chain sync at round ${roundCounter}`);
-        p2pServer.syncChains();
-      }
+      // // Sync last 10 blocks every 10 rounds to prevent drift
+      // if (roundCounter % 10 === 0) {
+      //   console.log(`\n🔄 Periodic chain sync at round ${roundCounter}`);
+      //   p2pServer.syncLast10Blocks();
+      // }
 
       // Recalculate next alignment to reduce drift
       const nextDelay = getNextAlignedDelay(ROUND_INTERVAL);
@@ -290,10 +333,11 @@ const startServer = async () => {
         console.log(`🚀 Phase 3 started`);
         await phase3();
 
+
         const roundEndTime = Date.now();
-        console.log(
-          `✅ Round ${bidManager.round} completed at ${roundEndTime}`
-        );
+        // console.log(
+        //   `✅ Round ${bidManager.round} completed at ${roundEndTime}`
+        // );
         resolve(); // ✅ Signals that the round is complete
       }, PHASE_3_START);
     });
@@ -311,13 +355,13 @@ const startServer = async () => {
 
     const tx = wallet.createTransaction(sensor_id, reading, tp, metadata);
     p2pServer.broadcastTransaction(tx);
-    console.log(
-      "✨: Generated and broadcasted sensor data related to sensor-id: ",
-      sensor_id
-    );
+    // console.log(
+    //   "✨: Generated and broadcasted sensor data related to sensor-id: ",
+    //   sensor_id
+    // );
   }
 
-  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 10000) : console.log("❌ Sensor data simulation disabled");
+  ENABLE_SENSOR_SIM ? setInterval(generateAndSendSensorData, 5000) : console.log("❌ Sensor data simulation disabled");
 
 
   function startPoLRoundScheduler() {

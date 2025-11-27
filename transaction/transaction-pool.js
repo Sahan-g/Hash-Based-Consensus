@@ -29,7 +29,7 @@ class TransactionPool {
         console.log("🔄 Transaction updated in the pool.");
       } else {
         this.transactions.push(transaction);
-        console.log("🆕 New transaction added to the pool.");
+        // console.log("🆕 New transaction added to the pool.");
       }
     }
 
@@ -69,6 +69,7 @@ class TransactionPool {
   }
 
   removeConfirmedTransactions(confirmedTransactions, proposerPublicKey, myPublicKey) {
+    // Log only the ids of the confirmed transactions
     // console.log("✅ Confirmed Transactions", confirmedTransactions);
 
     if (!Array.isArray(confirmedTransactions)) {
@@ -109,18 +110,18 @@ class TransactionPool {
   getTransactionsForRound(transactionPool, roundStart) {
     const allTxns = transactionPool.transactions;
     // console.log("all tx:", this.transactions)
-    console.log(`Round start time: ${roundStart}`);
+    // console.log(`Round start time: ${roundStart}`);
     const roundEndLimit = roundStart + TRANSACTION_COLLECTION_DURATION; // 8-minute mark
     
-    console.log(`Round start: ${roundStart}`);
-    console.log(`Round end limit: ${roundEndLimit}`);
+    // console.log(`Round start: ${roundStart}`);
+    // console.log(`Round end limit: ${roundEndLimit}`);
     // Filter and sort
     const filteredTxns = allTxns
       .filter(
         (txn) => txn.timestamp < roundEndLimit // lower limit removed because since we consider txns only upto  8 minutes some will be left for the next round
       )
       .sort((a, b) => a.timestamp - b.timestamp);
-      console.log("filtered:",filteredTxns)
+      // console.log("filtered:",filteredTxns)
     return filteredTxns;
   }
 }

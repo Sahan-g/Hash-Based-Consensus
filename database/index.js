@@ -1,4 +1,5 @@
 const {ClassicLevel} = require('classic-level');
+const { blacklisted } = require('../blockchain');
 
 const DB_PATH = process.env.DB_PATH || './chaindata';
 
@@ -51,6 +52,33 @@ class BlockchainDB {
                 return null;
             }
             console.error('Failed to retrieve wallet key:', error);
+            throw error;
+        }
+    }
+
+    async saveMaliciousNodes(maliciousNodes) {
+        try {
+            await this.db.put("malicious_nodes", maliciousNodes);
+            console.log("😈 Malicious nodes saved to DB successfully.");
+        } catch (error) {
+            console.error("❌ Failed to save malicious nodes:", error);
+        }
+    }
+
+    async getMaliciousNodes() {
+        try {
+            const data = await this.db.get("malicious_nodes");
+            console.log("😈 Malicious nodes retrieved successfully.");
+            return data || { counts: {}, blacklisted: [] };;
+        } catch (error) {
+            if (error.code == 'LEVEL_NOT_FOUND') {
+                console.log("No malicious nodes found in DB. Returning empty data.");
+                return {
+                    counts: {},
+                    blacklisted: []
+                };
+            }
+            console.error("❌ Error retrieving malicious nodes:", error);
             throw error;
         }
     }

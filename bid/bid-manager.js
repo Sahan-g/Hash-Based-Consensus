@@ -14,6 +14,7 @@ const {
   generateLargeBidHashTable,
 
 } = require("./consensus");
+const { threadId } = require("worker_threads");
 
 class BidManager {
   constructor(selfPublicKey, blockchain) {
@@ -21,6 +22,7 @@ class BidManager {
     this.bidList = new Map();
     // Initialize round based on time for strict synchronization
     this.round = Math.floor(Date.now() / ROUND_INTERVAL);
+    this.blockchain = blockchain;
   }
 
   generateBid(round, wallet) {
@@ -36,6 +38,7 @@ class BidManager {
     });
     this.addToBidList(bidPacket);
     console.log(`📝 Bid generated for round ${bidPacket.round} : ${bidHash}`);
+    // console.log(`🛑 Created bidPacket: ${JSON.stringify(bidPacket)}`);
     return bidPacket;
   }
 
@@ -45,6 +48,12 @@ class BidManager {
     // STRICT TIME-BASED SYNCHRONIZATION: Only accept bids for current round
     if (STRICT_ROUND_VALIDATION && bidPacket.round !== this.round) {
       console.log(`⏭️ Bid from round ${bidPacket.round} rejected - current round is ${this.round} (strict mode)`);
+      return false;
+    }
+
+    // Check whether the bid hash is from a blacklisted node
+    if (this.blockchain.blacklisted.has(bidPacket.publicKey)) {
+      console.log(`⛔⛔⛔ Bid from blacklisted node ${bidPacket.publicKey} rejected`);
       return false;
     }
 
@@ -102,6 +111,10 @@ class BidManager {
   }
 
   addToBidList(bidPacket) {
+    // if (bidPacket.publicKey in this.blockchain.blacklisted) {
+    //   console.log(`⛔⛔⛔ Bid from blacklisted node ${bidPacket.publicKey} rejected`);
+    //   return false;
+    // }
     const round = bidPacket.round;
     if (!this.bidList.has(round)) {
       this.bidList.set(round, []);

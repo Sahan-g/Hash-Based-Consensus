@@ -7,6 +7,7 @@ class Block {
     transactions,
     previousHash,
     proposerPublicKey,
+    bidHashList,
     hash,
     signature,
     wallet,
@@ -17,6 +18,7 @@ class Block {
     this.transactions = transactions;
     this.previousHash = previousHash;
     this.proposerPublicKey = proposerPublicKey;
+    this.bidHashList = bidHashList || [];
     this.hash = hash ? hash : this.computeHash();
     this.signature = signature ? signature : wallet.sign(this.hash);
     this.luckProof = luckProof || null;
@@ -24,8 +26,8 @@ class Block {
 
   computeHash() {
     const blockString =
-      this.index + JSON.stringify(this.transactions) + this.previousHash;
-    // console.log(`Block string for hashing: ${blockString}`);
+      this.index + JSON.stringify(this.transactions) + this.previousHash + JSON.stringify(this.bidHashList);
+    // console.log(`🌟 Block string for hashing`);
     return ChainUtil.createHash(blockString);
   } // removed timestamp
 
@@ -41,7 +43,8 @@ class Block {
 
   static verifyBlock(block) {
     const blockString =
-      block.index + JSON.stringify(block.transactions) + block.previousHash;
+      block.index + JSON.stringify(block.transactions) + block.previousHash + JSON.stringify(block.bidHashList);
+      console.log(`🌟 Verifying block...`);
     if (block.hash !== ChainUtil.createHash(blockString)) {
       console.log("Invalid block hash");
       return false;
@@ -90,6 +93,7 @@ class Block {
       transactions,
       previousHash,
       proposerPublicKey,
+      bidHashList,
       hash,
       signature,
       luckProof,
@@ -100,6 +104,7 @@ class Block {
       transactions,
       previousHash,
       proposerPublicKey,
+      bidHashList,
       hash,
       signature,
       luckProof,

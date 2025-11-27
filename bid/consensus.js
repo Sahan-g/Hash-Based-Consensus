@@ -97,6 +97,7 @@ function transformBidManagerToHashTable(bidManagerMap, targetRound) {
       timestamp: bidPacket.timestamp,
       signature: bidPacket.signature,
     };
+    // console.log(`BidPacket: ${JSON.stringify(bidPacket)} added to hashTable.`);
   });
 
   return hashTable;
@@ -290,11 +291,11 @@ function findClosestBidBinarySearch(sortedBidArray, targetBidHash) {
 }
 
 // Main optimized function that returns only the public key
-function findClosestBidPublicKey(hashTable, targetBidHash) {
-  const bidArray = createOptimizedBidArray(hashTable);
-  const sortedBids = sortBidsOptimized(bidArray);
-  return findClosestBidBinarySearch(sortedBids, targetBidHash);
-}
+// function findClosestBidPublicKey(hashTable, targetBidHash) {
+//   const bidArray = createOptimizedBidArray(hashTable);
+//   const sortedBids = sortBidsOptimized(bidArray);
+//   return [findClosestBidBinarySearch(sortedBids, targetBidHash), sortedBids];
+// }
 //-------------------------------------------------------------------------------------
 
 function performanceTest(hashTable, testName) {
@@ -417,5 +418,4 @@ module.exports = {
   createOptimizedBidArray,
   sortBidsOptimized,
   findClosestBidBinarySearch,
-  findClosestBidPublicKey,
 };

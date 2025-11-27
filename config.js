@@ -2,10 +2,10 @@ const INITIAL_BALANCE = 500;
 const PROPOSER_REWARD = 50;
 const DIFFICULTY = 4;
 
-const ROUND_INTERVAL = 20 * 1000; // 20 seconds in ms
+const ROUND_INTERVAL = 30 * 1000; // 20 seconds in ms
 const PHASE_1_DURATION = 4 * 1000; // First 4 seconds for publishing randomness
-const PHASE_3_START = 18 * 1000; // Leader publishes block at 18th second
-const TRANSACTION_COLLECTION_DURATION = 16 * 1000; // Collect transactions for first 16 seconds
+const PHASE_3_START = 17 * 1000; // Leader publishes block at 18th second
+const TRANSACTION_COLLECTION_DURATION = 15 * 1000; // Collect transactions for first 16 seconds
 const CLEANUP_INDEX_FREQUENCY = 10; // every 10 indices clean the pending transactions
 const CLEANUP_LIMIT = 5; // cleanup transactions older than 5 rounds
 
@@ -17,6 +17,8 @@ const STRICT_ROUND_VALIDATION = true; // Only accept bids for exact current roun
 NUM_SLOTS = 10; // number of slots per round
 SLOT_MS = 50; // each slot = 50ms → max 500, 0.5s to wait
 PROPOSAL_SCHEDULE_DELAY = 2000; // wait 2 seconds before scheduling proposal broadcast
+
+NODE_SYNCING_FREQ = 10;
 
 module.exports = {
   INITIAL_BALANCE,
@@ -33,4 +35,5 @@ module.exports = {
   CLEANUP_LIMIT,
   MIN_BIDS_REQUIRED,
   STRICT_ROUND_VALIDATION,
+  NODE_SYNCING_FREQ
 };
