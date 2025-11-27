@@ -50,85 +50,7 @@ class Blockchain {
         return this.chain[this.chain.length - 1]; 
     }
 
-    // async addBlockToChain(block, p2pServer) {
-    //     // console.log(this.chain);
-    //     const lastBlock = this.getLastBlock();
-
-    //     if (block.proposerPublicKey in this.blacklisted) {
-    //         console.log(`🚫 Block proposer ${block.proposerPublicKey} is blacklisted. Rejecting block.`);
-    //         return false;
-    //     }
-        
-    //     // Check if block already exists
-    //     if (this.chain.some(b => b.hash === block.hash)) {
-    //         console.log(`⏭️ Block with hash ${block.hash.substring(0, 8)}... already exists in chain. Skipping.`);
-    //         return false;
-    //     }
-        
-    //     // Check if block index is too old
-    //     if (block.index <= lastBlock.index) {
-    //         console.log(`⏭️ Block index ${block.index} is not greater than current last block ${lastBlock.index}. Skipping.`);
-    //         return false;
-    //     }
-        
-    //     console.log(`📝 Attempting to add block ${block.index} to chain (current last: ${lastBlock.index})`);
-
-    //     if (p2pServer.targetHashForRound == null) {
-    //         console.log(`❌❌❌ No target hash set for current round.`);
-    //     }
-    //     if ((p2pServer.targetHashForRound != null && block.hash !== p2pServer.targetHashForRound) || (p2pServer.targetHashForRound != null && block.proposerPublicKey != p2pServer.targetProposerForRound)) {
-    //         if ((p2pServer.targetHashForRound != null && block.hash !== p2pServer.targetHashForRound)) {
-    //             console.log(`\n❌ Block hash ${block.hash.substring(0,8)}... `);
-    //             console.log(`❌ does not match target hash ${p2pServer.targetHashForRound.substring(0,8)}.... Rejecting block at ${Date.now()}`);
-            
-    //         } 
-    //         if (p2pServer.targetProposerForRound != null && block.proposerPublicKey != p2pServer.targetProposerForRound) {
-    //             console.log(`❌ Block proposer ${block.proposerPublicKey} does not match target proposer ${p2pServer.targetProposerForRound}. Rejecting block at ${Date.now()}`);
-    //         }
-            
-    //         // TODO: Go for voting
-    //         const majorityHash = await p2pServer.initiateVotingForBlock(block);
-    //         p2pServer.isVotingInProgress = false;
-    //         p2pServer.receivedVotes = {};
-    //         p2pServer.isVoted = {};
-            
-    //         if (block.hash === majorityHash) {
-    //             console.log(`✅ Block hash matches majority. Proceeding to add.`);
-    //         } else {
-    //             console.log(`⚠️ Proposer ${block.proposerPublicKey} sent malicious block!`);
-    //             this.maliciousCount[block.proposerPublicKey] = (this.maliciousCount[block.proposerPublicKey] || 0) + 1;
-
-    //             // 🚫 Blacklist after 3 malicious acts
-    //             if (this.maliciousCount[block.proposerPublicKey] >= 3) {
-    //                 this.blacklisted.add(block.proposerPublicKey);
-    //                 console.log(`🚫 Proposer ${block.proposerPublicKey} permanently blacklisted.`);
-    //             }
-    //             // 💾 Save updated malicious data
-    //             await db.saveMaliciousNodes({
-    //                 counts: this.maliciousCount,
-    //                 blacklisted: Array.from(this.blacklisted)
-    //             });
-
-    //             return false;
-    //         }
-    //     }
-        
-    //     // console.log(`⭐⭐⭐ BidHashList before adding block: ${JSON.stringify(block.bidHashList)}`);
-    //     if (Block.verifyBlock(block) && Block.isValidBlock(block, lastBlock)) {
-    //         p2pServer.isVotingInProgress = false; // Stop any voting in progress
-    //         p2pServer.receivedVotes = {};
-    //         this.chain.push(block);
-    //         await db.saveChain(this.chain);
-    //         console.log(`👍 Block ${block.index} added to chain and saved to DB.\n`);
-    //         // console.log(`⭐⭐⭐ New last block is now ${JSON.stringify(this.getLastBlock().bidHashList)}`);
-    //         return true;
-    //     } else {
-    //         console.log(`❌ Invalid block ${block.index}. Not added to chain.`);
-    //         return false;
-    //     }
-    // }
-
-    async addBlockToChain2(block, p2pServer) {
+    async addBlockToChain(block, p2pServer) {
         // console.log(this.chain);
         this.receivedBlocks[block.proposerPublicKey] = block.hash;
         const lastBlock = this.getLastBlock();
@@ -197,7 +119,7 @@ class Blockchain {
             // console.log(`Received Votes so far: ${JSON.stringify(p2pServer.receivedVotes)}`);
         }
                 
-        p2pServer.initiateVotingForBlock2(block);
+        p2pServer.initiateVotingForBlock(block);
     }
 
     majorityReachedFunc(majorityHash) {

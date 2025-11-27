@@ -173,7 +173,7 @@ class P2PServer {
             console.log(
               `📥 Block received with index ${data.block.index} at p2p-server`
             );
-            const isAdded = await this.blockchain.addBlockToChain2(data.block, this); // Change this if per node voting
+            const isAdded = await this.blockchain.addBlockToChain(data.block, this); // Change this if per node voting
             // console.log(`⁉ Block addition result: ${JSON.stringify(isAdded)}`);
             if (isAdded) {
               this.transactionPool.removeConfirmedTransactions(
@@ -228,13 +228,13 @@ class P2PServer {
           console.log(
             `\n🗳 Received block vote request at p2p-server`
           );
-          this.handleBlockVoteRequest2(socket);
+          this.handleBlockVoteRequest(socket);
           break;
         case MESSAGE_TYPES.block_vote_response:
           console.log(
             `\n🗳 Received block vote response at p2p-server`
           );
-          this.handleBlockVoteResponse2(data.hash, data.publicKey, data.signature);
+          this.handleBlockVoteResponse(data.hash, data.publicKey, data.signature);
           break;
         case MESSAGE_TYPES.malicious_data:
           console.log(`🛑🛑🛑 Malicious data received at p2p-server`);
@@ -407,7 +407,7 @@ class P2PServer {
         return;
       }
       
-      const isAdded = await this.blockchain.addBlockToChain2(block, this); // Change this if per node voting 
+      const isAdded = await this.blockchain.addBlockToChain(block, this); // Change this if per node voting 
       // console.log(`BLOCK JUST ADDED: ${JSON.stringify(this.blockchain.getLastBlock())}`);
       console.log(`BLOCK JUST ADDED`);
       
@@ -431,41 +431,7 @@ class P2PServer {
     );
   }
 
-  // async initiateVotingForBlock(block) {
-  //   this.needBlockHashSync = true;
-  //   this.isVotingInProgress = true;
-  //   console.log(`\n🗳️ Initiating voting for block ${block.index} (hash: ${block.hash.substring(0,8)}...)`);
-  //   // 1️⃣ Broadcast voting request to all peers
-  //   const votingRequest = {
-  //       type: 'REQUEST_BLOCK_VOTE',
-  //   };
-  //   this.broadcastBlockVoteRequest(votingRequest);
-
-  //   this.receivedVotes[this.targetHashForRound] = (this.receivedVotes[this.targetHashForRound] || 0) + 1;; // our own vote
-    
-  //   this.receivedVoteWithSender[this.bidManager.selfPublicKey] = this.targetHashForRound;
-  //   // this.isVoted[this.bidManager.selfPublicKey] = this.targetHashForRound;
-  //   // this.receivedBlockAndHash[block.hash] = block; // store
-  //   const majorityThreshold =  Math.ceil((2 / 3) * (this.sockets.length + 1));
-  //   console.log(`1️⃣ Majority Threshold: ${majorityThreshold}`);
-  //   console.log(`🗳️ No. of peers: ${this.sockets.length + 1}`);
-  //   while (true && this.isVotingInProgress) {
-  //     const sorted = Object.entries(this.receivedVotes).sort((a, b) => b[1] - a[1]);
-  //     const [majorityHash, count] = sorted[0];
-  //       if (count >= majorityThreshold) {
-  //         console.log(`✅ Block ${block.index} reached majority ${JSON.stringify(majorityHash)} with ${count} votes (threshold: ${majorityThreshold})`);
-  //         this.isVotingInProgress = false;
-  //         this.needBlockHashSync = false;
-  //         this.isVoted = {};
-  //         return majorityHash;
-  //     }
-
-  //     // Let Node.js process socket messages
-  //     await new Promise(resolve => setTimeout(resolve, 10));
-  //   }
-  // }
-
-  initiateVotingForBlock2(block) {
+  initiateVotingForBlock(block) {
     console.log(`\n🗳️ Initiating voting for block ${block.index} (hash: ${block.hash.substring(0,8)}...)`);
     if (this.isVotingInProgress) {
       console.log('🗳️ Vote is not needed or already voted');
@@ -496,24 +462,7 @@ class P2PServer {
     // console.log(`Received blocks: ${JSON.stringify(this.blockchain.receivedBlocks)}`);
   }
 
-  // handleBlockVoteRequest(socket) {
-  //   if (this.isVoted[socket]) {
-  //     console.log('🗳️ Vote is not needed or already voted');
-  //     return;
-  //   }
-    
-  //   const votingResponse ={ 
-  //     type: 'BLOCK_VOTE_RESPONSE',
-  //     hash: this.targetHashForRound, 
-  //     publicKey: this.bidManager.selfPublicKey,
-  //     signature: this.wallet.sign(this.targetHashForRound),
-  //   };
-  //   this.sendBlockVoteResponse(votingResponse, socket);
-  //   console.log(`🗳️ Handled block vote request`);
-
-  // }
-
-  handleBlockVoteRequest2() { 
+  handleBlockVoteRequest() { 
     if (this.isVotingInProgress) {
       console.log('🗳️ Vote is not needed or already voted');
       return;
@@ -537,33 +486,8 @@ class P2PServer {
     // console.log(`🗳️ Handled block vote request`);
   }
 
-  // handleBlockVoteResponse(hash, publicKey, signature) {
-  //   this.isVotingInProgress = true;
-  //   // console.log('🗳️ Trying to handle block vote response');
-  //   if (!this.needBlockHashSync) {
-  //     console.log(`🗳️ Ignoring block vote response as it was not requested`);
-  //     return;
-  //   }
-  //   // console.log('🗳️ Must handle vote Response');
-  //   if (this.receivedVoteWithSender[publicKey]) {
-  //     console.log(`🗳️ Ignoring duplicate vote from ${publicKey}`);
-  //     // TODO: could mark this as malicious behaviour
-  //     return;
-  //   }
-  //   if (!ChainUtil.verifySignature(publicKey, signature, hash)) {
-  //     console.log(`🗳️ Ignoring invalid signature from ${publicKey}`);
-  //     // TODO: could mark this as malicious behaviour
-  //     return;
-  //   }
 
-  //   this.receivedVotes[hash] = (this.receivedVotes[hash] || 0) + 1;
-  //   this.receivedVoteWithSender[publicKey] = hash;
-    
-  //   console.log(`🗳️ Handled block vote response`);
-
-  // }
-
-  handleBlockVoteResponse2(hash, publicKey, signature) {
+  handleBlockVoteResponse(hash, publicKey, signature) {
     // console.log('🗳️ Must handle vote Response');
 
     let majorityThreshold =  Math.ceil((2 / 3) * (this.sockets.length + 1));
