@@ -1,4 +1,5 @@
 const ChainUtil = require("../chain-util");
+const { getMerkleRoot } = require("../bid/transaction-sync");
 
 class Block {
   constructor({
@@ -10,12 +11,16 @@ class Block {
     hash,
     signature,
     wallet,
+    merkleRoot,
   }) {
     this.index = index;
     this.timestamp = timestamp || Date.now();
     this.transactions = transactions;
     this.previousHash = previousHash;
     this.proposerPublicKey = proposerPublicKey;
+    this.merkleRoot = merkleRoot
+      ? merkleRoot
+      : getMerkleRoot(this.transactions);
     this.hash = hash ? hash : this.computeHash();
     this.signature = signature ? signature : wallet.sign(this.hash);
   }
