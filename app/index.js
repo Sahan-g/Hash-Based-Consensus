@@ -205,7 +205,9 @@ const startServer = async () => {
     console.log(`🛟🛟 TargetHash after clearing: ${p2pServer.targetHashForRound}`);
     
     const bidPacket = bidManager.generateBid(bidManager.round, wallet);
+    setTimeout(() => {
     p2pServer.broadcastBid(bidPacket);
+    }, 1000);
 
     // Clear the receivedMaliciousData, majorityReached, receivedLast10Blocks, majorityLast10Blocks, receivedLast10BlocksWithSender
     blockchain.receivedMaliciousData = {};

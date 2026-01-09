@@ -77,7 +77,16 @@ class Blockchain {
         console.log(`📝 Attempting to add block ${block.index} to chain (current last: ${lastBlock.index})`);
 
         if (p2pServer.targetHashForRound == null) {
-            console.log(`❌❌❌ No target hash set for current round.`);
+            console.log(`❌❌❌ No target hash set for current round.`);   
+            console.log(`⏳ Waiting for target hash...`);
+            try {
+                await this.waitForTargetHash(p2pServer);
+                console.log(`✅ Target hash received`);
+            } catch (err) {
+                console.log(`❌ ${err.message}`);
+                // this.goForVoting(p2pServer, block);
+                return false;
+            }
         }
 
         if ((p2pServer.targetHashForRound != null && block.hash !== p2pServer.targetHashForRound)) {
@@ -111,6 +120,25 @@ class Blockchain {
             return false;
         }
     }
+
+    waitForTargetHash(p2pServer, timeoutMs = 1000, intervalMs = 20) {
+        return new Promise((resolve, reject) => {
+            const start = Date.now();
+
+            const check = () => {
+            if (p2pServer.targetHashForRound != null) {
+                return resolve(p2pServer.targetHashForRound);
+            }
+            if (Date.now() - start > timeoutMs) {
+                return reject(new Error("Timeout waiting for targetHashForRound"));
+            }
+            setTimeout(check, intervalMs);
+            };
+
+            check();
+        });
+    }
+  
 
     goForVoting(p2pServer, block) {
         if (!p2pServer.receivedVoteWithSender[block.proposerPublicKey]) {

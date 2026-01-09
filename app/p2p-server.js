@@ -449,7 +449,8 @@ class P2PServer {
       publicKey: this.bidManager.selfPublicKey,
       signature: this.wallet.sign(this.targetHashForRound),
     };
-    this.sendBlockVoteResponse2(votingResponse);
+    console.log(`\n🗳 Sending block vote response for hash ${this.targetHashForRound} from ${this.bidManager.selfPublicKey}`);
+    this.sendBlockVoteResponse2(JSON.stringify(votingResponse));
     // console.log(`🗳️ Handled block vote request`);
     
     this.blockchain.receivedBlocks[this.bidManager.selfPublicKey] = this.targetHashForRound;
@@ -482,6 +483,7 @@ class P2PServer {
       publicKey: this.bidManager.selfPublicKey,
       signature: this.wallet.sign(this.targetHashForRound),
     };
+   
     this.sendBlockVoteResponse2(votingResponse);
     // console.log(`🗳️ Handled block vote request`);
   }
