@@ -9,6 +9,9 @@ const selfAddress = `ws://${P2P_HOST}:${P2P_PORT}`;
 const {
   findClosestBidPublicKey,
   transformBidManagerToHashTable,
+  createOptimizedBidArray,
+  sortBidsOptimized,
+  findClosestBidBinarySearch,
 } = require("../bid/consensus.js");
 const Block = require("../blockchain/block");
 
@@ -37,6 +40,8 @@ class P2PServer {
     this.luckConsensus = luckConsensus;
     this.lastGeneratedProposal = null;
     this.processingBlocks = new Set(); // Prevent duplicate block processing
+    this.targetHashForRound = null;
+    this.targetProposerForRound = null;
   }
 
   async listen() {
@@ -145,7 +150,7 @@ class P2PServer {
             console.log(
               `📥 Block received with index ${data.block.index} at p2p-server`
             );
-            const isAdded = this.blockchain.addBlockToChain(data.block);
+            const isAdded = this.blockchain.addBlockToChain(data.block, this);
             if (isAdded) {
               this.transactionPool.removeConfirmedTransactions(
                 data.block.transactions, data.block.proposerPublicKey, this.bidManager.selfPublicKey
@@ -222,7 +227,7 @@ class P2PServer {
     });
   }
 
-  broadcastBlock(round, wallet, roundStart) {
+  async broadcastBlock(round, wallet, roundStart) {
     // console.log("hit");
     console.log(this.transactionPool);
     
@@ -242,19 +247,42 @@ class P2PServer {
       this.transactionPool,
       roundStart
     );
+
+    const hashTableWithBids = transformBidManagerToHashTable(bidList, round);
+    const bidArray = createOptimizedBidArray(hashTableWithBids);
+    const sortedBids = sortBidsOptimized(bidArray);
     
     const block = new Block({
       index: this.blockchain.getLastBlock().index + 1,
       transactions,
       previousHash: this.blockchain.getLastBlock().hash,
       proposerPublicKey: this.bidManager.selfPublicKey,
+      bidHashList: sortedBids.map(bid => ({
+        publicKey : bid.publicKey,
+        bidValue  : bid.bidValue.toString(),
+      })),
       wallet: wallet,
     });
-    const hashTableWithBids = transformBidManagerToHashTable(bidList, round);
-    const proposerPublicKey = findClosestBidPublicKey(
-      hashTableWithBids,
-      block.hash
-    );
+
+    // console.log(`📦 Generated block`);
+    // Log only the sensor IDs of the transactions in the generated block
+    const sensorIds = block.transactions.map(tx => tx.sensor_id || tx.id);
+    // console.log(`📦 Block ${block.index} contains sensor readings from: ${sensorIds.join(', ')}`);
+    // console.log(`📦 Generated block: ${JSON.stringify(block)}`);
+    // console.log(`📦 Generated block with index ${JSON.stringify(block.index)} and hash: ${JSON.stringify}`);
+    this.targetHashForRound = block.hash;
+    // console.log(`🟡 Updated targetHashForRound: ${block.hash} -> ${this.targetHashForRound}`);
+    this.targetBlockForRound = block;
+
+    console.log(`\n🌐 Target hash for round ${round} set to: ${this.targetHashForRound} at ${Date.now()}`);
+
+    // const proposerPublicKey = findClosestBidPublicKey(
+    //   hashTableWithBids,
+    //   block.hash
+    // );
+    const proposerPublicKey = findClosestBidBinarySearch(sortedBids, this.targetHashForRound);
+    this.targetProposerForRound = proposerPublicKey;
+    // console.log(`🟡 Updated targetProposerForRound: ${proposerPublicKey} -> ${this.targetProposerForRound}`);
     console.log(
       `🌐 Proposer for this round (${round}) is ${proposerPublicKey}`
     );
@@ -271,7 +299,9 @@ class P2PServer {
         return;
       }
       
-      const isAdded = this.blockchain.addBlockToChain(block);
+      const isAdded = await this.blockchain.addBlockToChain(block, this); // Change this if per node voting 
+      // console.log(`BLOCK JUST ADDED: ${JSON.stringify(this.blockchain.getLastBlock())}`);
+      console.log(`BLOCK JUST ADDED`);
       
       if (!isAdded) {
         console.error(`❌ Failed to add own block to chain`);
@@ -279,7 +309,7 @@ class P2PServer {
       }
       
       this.transactionPool.removeConfirmedTransactions(block.transactions, proposerPublicKey, this.bidManager.selfPublicKey);
-      
+      console.log(`📡 Verifying bid list before broadcasting block: ${block.bidHashList}`);
       // Broadcast only after successful local addition
       this.sockets.forEach((socket) => {
         socket.send(JSON.stringify({ type: MESSAGE_TYPES.block, block }));

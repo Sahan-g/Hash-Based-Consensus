@@ -30,7 +30,7 @@ class Blockchain {
         return this.chain[this.chain.length - 1]; 
     }
 
-    async addBlockToChain(block) {
+    async addBlockToChain(block, p2pServer) {
         // console.log(this.chain);
         const lastBlock = this.getLastBlock();
         
@@ -48,6 +48,34 @@ class Blockchain {
         
         console.log(`📝 Attempting to add block ${block.index} to chain (current last: ${lastBlock.index})`);
         
+        if (p2pServer.targetHashForRound == null) {
+            console.log(`❌❌❌ No target hash set for current round.`);   
+            console.log(`⏳ Waiting for target hash...`);
+            try {
+                await this.waitForTargetHash(p2pServer);
+                console.log(`✅ Target hash received`);
+            } catch (err) {
+                console.log(`❌ ${err.message}`);
+                // this.goForVoting(p2pServer, block);
+                return false;
+            }
+        }
+
+        if ((p2pServer.targetHashForRound != null && block.hash !== p2pServer.targetHashForRound)) {
+            console.log(`\n❌ Block hash ${block.hash.substring(0,8)}... `);
+            console.log(`❌ does not match target hash ${p2pServer.targetHashForRound.substring(0,8)}.... Rejecting block at ${Date.now()}`);
+            // console.log(`Current received blocks: ${JSON.stringify(this.receivedBlocks)}`);
+            return false;
+        
+        } 
+
+        if (p2pServer.targetProposerForRound != null && block.proposerPublicKey != p2pServer.targetProposerForRound) {
+            console.log(`❌ Block proposer ${block.proposerPublicKey} does not match target proposer ${p2pServer.targetProposerForRound}. Rejecting block at ${Date.now()}`);
+            // console.log(`Current received blocks: ${JSON.stringify(this.receivedBlocks)}`);
+            // this.goForVoting(p2pServer, block);
+            return false;
+        }
+
         if (Block.verifyBlock(block) && Block.isValidBlock(block, lastBlock)) {
             this.chain.push(block);
             await db.saveChain(this.chain);
@@ -57,6 +85,24 @@ class Blockchain {
             console.log(`❌ Invalid block ${block.index}. Not added to chain.`);
             return false;
         }
+    }
+
+    waitForTargetHash(p2pServer, timeoutMs = 1000, intervalMs = 20) {
+        return new Promise((resolve, reject) => {
+            const start = Date.now();
+
+            const check = () => {
+            if (p2pServer.targetHashForRound != null) {
+                return resolve(p2pServer.targetHashForRound);
+            }
+            if (Date.now() - start > timeoutMs) {
+                return reject(new Error("Timeout waiting for targetHashForRound"));
+            }
+            setTimeout(check, intervalMs);
+            };
+
+            check();
+        });
     }
 
     isChainValid(chain) {
@@ -71,7 +117,7 @@ class Blockchain {
                 return false;
             }
 
-            const blockString = currentBlock.index + JSON.stringify(currentBlock.transactions) + currentBlock.previousHash;
+            const blockString = currentBlock.index + JSON.stringify(currentBlock.transactions) + currentBlock.previousHash + JSON.stringify(currentBlock.bidHashList);
             const currentBlockHash = ChainUtil.createHash(blockString);
             if (currentBlockHash !== currentBlock.hash) {
                 console.log(`Invalid hash at block ${i}: computed ${currentBlockHash}, expected ${currentBlock.hash}`);

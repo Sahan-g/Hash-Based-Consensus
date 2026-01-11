@@ -190,9 +190,13 @@ const startServer = async () => {
     // STRICT TIME-BASED SYNCHRONIZATION: Calculate round from time, not chain
     const timeBasedRound = getCurrentRoundFromTime();
     bidManager.round = timeBasedRound;
+    p2pServer.targetHashForRound = null;
+    console.log(`🛟🛟 TargetHash after clearing: ${p2pServer.targetHashForRound}`);
     
     const bidPacket = bidManager.generateBid(bidManager.round, wallet);
-    p2pServer.broadcastBid(bidPacket);
+    setTimeout(() => {
+      p2pServer.broadcastBid(bidPacket);
+    }, 1000);
     
     console.log(`⏰ Round ${bidPacket.round} - Phase 1: Bid generated (time-based sync)`);
     console.log(`📊 Time: ${Date.now()}, Round: ${timeBasedRound}`);
